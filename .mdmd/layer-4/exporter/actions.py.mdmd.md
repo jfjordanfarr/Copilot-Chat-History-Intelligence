@@ -1,10 +1,15 @@
-# Layer 4 — script/copilot_markdown/actions.py
+# Layer 4 — src/export/actions.py
 
 Implementation
-- File: [vscode-copilot-chat-main/script/copilot_markdown/actions.py](../../../vscode-copilot-chat-main/script/copilot_markdown/actions.py)
+- File: [src/export/actions.py](../../../src/export/actions.py)
 
-Purpose
-- Bridge between raw `metadata.messages[]` and Markdown blocks via pattern matchers.
+What it does
+- Bridges between raw `metadata.messages[]` and Markdown blocks via pattern matchers.
+
+Why it exists
+- **Thin orchestration layer**: Separates filtering/noise-suppression logic from pattern matching.
+- **Conversational metadata removal**: Strips auto-approval chatter and other non-salient noise in default mode.
+- **Raw mode toggle**: Preserves ability to dump full JSON payloads when debugging exporter itself.
 
 Public surface
 - render_actions(messages: Iterable[dict], include_raw: bool=False) -> List[str]

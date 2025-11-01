@@ -1,7 +1,7 @@
-# Layer 4 — AI-Agent-Workspace/seen_before.py
+# Layer 4 — seen_before.py
 
 Implementation
-- File: [AI-Agent-Workspace/seen_before.py](../../../AI-Agent-Workspace/seen_before.py)
+- File: [seen_before.py](../../../seen_before.py)
 
 Purpose
 - Search existing Markdown exports for repeated action motifs, answering “have I seen this before?” across sessions.

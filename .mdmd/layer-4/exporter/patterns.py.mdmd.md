@@ -1,10 +1,16 @@
-# Layer 4 — script/copilot_markdown/patterns.py
+# Layer 4 — src/export/patterns.py
 
 Implementation
-- File: [vscode-copilot-chat-main/script/copilot_markdown/patterns.py](../../../vscode-copilot-chat-main/script/copilot_markdown/patterns.py)
+- File: [src/export/patterns.py](../../../src/export/patterns.py)
 
-Purpose
-- Collapse low‑level `metadata.messages[]` into compact, UI‑parity action blocks.
+What it does
+- Collapses low‑level `metadata.messages[]` into compact, UI‑parity action blocks.
+
+Why it exists
+- **Compression without loss**: Raw tool call JSON can be 12k+ lines per session; patterns compress to ~10% while preserving key details.
+- **Functional pattern matching**: Detects multi-event sequences (Apply Patch = 4 records) and renders as single cohesive block.
+- **Failure context preservation**: Terminal failures show stderr tails, exit codes, duration—critical for debugging repeated mistakes.
+- **Extensibility**: Pattern registry enables adding new tool call compressors as VS Code APIs evolve.
 
 Public surface
 - render_message_stream(messages: Sequence[dict], include_raw: bool) -> List[List[str]]

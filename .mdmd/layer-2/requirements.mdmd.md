@@ -14,25 +14,33 @@ Functional requirements
 - Render user/assistant text and a compact Actions section per turn.
 - Action types: Terminal (exit/status + stderr tail), Apply Patch (file count, +/- counts), Read, Search, Inline Reference, Tool invocation.
 - Suppress noise: `thinking` (optional cap), `mcpServersStarting`, `prepare/toolSerialized`, `textEditGroup` bulk, `codeblockUri` repetition.
-- Add per-turn “Actions this turn” and a session-level “Actions summary”.
+- Add per-turn “Actions this turn” and a session-level “Actions + Status summary”.
+- Surface cross-session counts inline (“Seen across N sessions (M× total)”) when we have prior motif data.
 
-### <a id="R003"></a> R003 — Failure visibility
+### <a id="R003"></a> R003 — Failure & warning visibility
 - For terminal/tool failures, show exit code and capture a capped stderr-first tail with “(truncated)” marker.
+- When exit=0 but stderr exists, label as warnings and show a capped tail.
 - Detect interactive hangs and annotate “Awaiting input (interactive)”.
+- Highlight canceled/terminated turns inline and in session summaries.
 
-### <a id="R004"></a> R004 — Motif detection
+### <a id="R004"></a> R004 — Motif detection & LOD cues
 - Normalize action block text (lowercase, mask paths/URIs/UUIDs, collapse numbers/whitespace).
 - Within-session: annotate repeated motifs with “Seen before (Nx)” and list top motifs.
-- Across sessions: prepare counts and summaries (initially via CLI; later inline on export).
+- Across sessions: annotate “Seen across N sessions (M× total)” and retain a motif index for reuse.
+- Generate sequence motifs (bigrams/trigrams) to highlight common action flows.
+- Provide hooks for deriving higher-level LOD summaries from motif data.
+- Deliver a lowest-detail LOD (LOD-0) export that mirrors Copy All text but replaces the interior of every fenced/quoted code block with `...` to preserve structure while minimizing tokens.
 
 ### <a id="R005"></a> R005 — Recall tooling
 - `conversation_recall.py`: TF‑IDF with on-disk caching; keyword query returns top K snippets with provenance.
 - `seen_before.py`: scan exports for repeated motifs (exact + near matches, e.g., Jaccard≥0.5).
-- `summarize_exports.py`: quick A/B metrics (counts for Actions, Terminal, Apply Patch, statuses).
+- `summarize_exports.py`: quick A/B metrics (counts for Actions, Terminal, Apply Patch, statuses, motif trends).
+- Lightweight LOD summaries: derive per-session headline stats for quick skims.
 
-### <a id="R006"></a> R006 — CLI ergonomics (Windows‑first)
+### <a id="R006"></a> R006 — CLI ergonomics (Windows-first, portable)
 - Provide PowerShell-safe commands; avoid here-doc and multiline `python -c` with complex regex.
 - One-liners prefer helper `.py` scripts under `AI-Agent-Workspace/`.
+- Allow optional config file to centralize DB/export/cache paths for portability.
 
 Non‑functional requirements
 
@@ -47,22 +55,27 @@ Non‑functional requirements
 
 ### <a id="NFR004"></a> NFR004 — Privacy
 - Prune sensitive keys (e.g., `encrypted`) and avoid leaking secrets.
+- Provide a configurable redaction mode for exports.
 
 ### <a id="NFR005"></a> NFR005 — Portability
 - Run on Windows first; keep code portable to macOS/Linux.
+- Document shell differences (PowerShell vs bash/zsh) for commands and detection heuristics.
 
 Interfaces & contracts (initial)
 - Exporter: `render_session_markdown(session, include_status: bool, include_raw_actions: bool=False) -> str`.
 - Ingestor: `chat_logs_to_sqlite.py --db <path> [--reset]` writes `live_chat.db` + `schema_manifest.json`.
 - Normalization: fingerprint(text) → normalized motif key; segment(action_lines) → blocks.
+- LOD summary: derive headline metrics from motif/action data (spec to follow).
+- MCP (future): placeholder endpoints for recall_topk and seen_before summaries.
 
 Acceptance checks (representative)
-- Export a known session → file contains: Actions blocks, per-turn counts, Actions summary, Motifs, and failure tails (when present).
+- Export a known session → file contains: Actions blocks, per-turn counts, Actions + Status summary, Motifs, sequence motifs, cross-session annotations, and failure/warning tails as applicable.
 - Run recall on a keyword from 10/21 → returns at least one relevant prior prompt with provenance.
-- Run `seen_before.py` on exports → identifies repeated terminal command motif(s).
+- Run `seen_before.py` on exports → identifies repeated terminal command motif(s) and reports cross-session counts.
+- Generate a lightweight LOD summary → matches headline counts in detailed export.
 
 Roadmap (aligned with L1)
-- M1–M5 milestones track ingestion → export → failure visibility → motifs → MCP.
+- M1–M5 milestones track ingestion → export → failure visibility → motifs → LOD/MCP.
 
 Next layer
 - Continue to Layer 3 (Architecture & Solution Components): ../layer-3/architecture.mdmd.md

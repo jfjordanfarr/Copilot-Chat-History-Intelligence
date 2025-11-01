@@ -1,24 +1,30 @@
-# Layer 4 — script/export_chat_sessions_to_markdown.py
+# Layer 4 — src/export/cli.py
 
 Implementation
-- File: [vscode-copilot-chat-main/script/export_chat_sessions_to_markdown.py](../../../vscode-copilot-chat-main/script/export_chat_sessions_to_markdown.py)
+- File: [src/export/cli.py](../../../src/export/cli.py)
 
-Purpose
-- Render Copilot chat sessions (from VS Code storage or SQLite) to Markdown that mirrors the chat UI plus compact Actions and motifs.
+What it does
+- Renders Copilot chat sessions (from VS Code storage or SQLite) to Markdown that mirrors the chat UI plus compact Actions and motifs.
+
+Why it exists
+- **Richer than Copy-All**: VS Code's "Copy All" loses tool call details, status information, and failure context. This preserves them.
+- **Auditable tool traces**: Surface which tool calls succeeded/failed/canceled so Copilot can learn from repeated mistakes.
+- **Workspace organization**: Groups exports by workspace for multi-project navigation.
+- **Within-session motifs**: "Seen before (Nx)" annotations reveal repeated patterns invisible in raw Copy-All.
+- **Cross-session recall foundation**: Exports become the corpus for "have I encountered this before?" search tooling.
 
 Public surface
-- CLI: export_chat_sessions_to_markdown.py [path?] [--session id | --all] [--output path] [--include-status] [--raw-actions] [--database db] [--workspace-directories]
+- CLI: python -m export.cli [path?] [--session id | --all] [--output path] [--include-status] [--raw-actions] [--database db] [--workspace-directories] [--lod 0]
 
-Key functions
-- parse_args(argv) -> Namespace: parses flags.
+- parse_args(argv) -> Namespace: parses flags (now includes --lod for Copy-All style exports).
 - collect_candidate_sessions(target: Optional[Path]) -> List[SessionRecord]: scans files (via chat_logs_to_sqlite.gather_input_files), filters, sorts.
 - collect_sessions_from_database(db: Path) -> List[SessionRecord]: rebuilds sessions from SQLite `prompts` and `prompt_logs`.
 - determine_output_path(base_output, session_id, exporting_multiple, *, workspace_key, group_by_workspace) -> Optional[Path]
-- render_session_markdown(session, include_status, include_raw_actions) -> str: imported from copilot_markdown.
+- render_session_markdown(session, include_status, include_raw_actions, cross_session_dir, lod_level) -> str: imported from copilot_markdown.
 - export_session(markdown, destination)
 
 Inputs
-- Either: raw session JSON files (VS Code chatSessions/…) or `--database` pointing at `live_chat.db` created by `chat_logs_to_sqlite.py`.
+- Either: raw session JSON files (VS Code chatSessions/…) or `--database` pointing at `live_chat.db` created by `catalog.ingest`.
 - Optional `--session` to target a specific session; otherwise interactive selection.
 
 Outputs
@@ -29,6 +35,7 @@ Behavior
 - Output selection: single session → file path or stdout; `--all` → per-session files inside `--output` directory.
 - Status: When `--include-status`, includes result.errorDetails as “> _Status_: …”.
 - Raw mode: When `--raw-actions`, includes verbose JSON payloads within Actions blocks.
+- LOD flag: `--lod 0` emits Copy-All style transcripts with fenced/triple-quoted blocks collapsed to `...`.
 
 Edge cases
 - Handles missing sessionId by falling back to filename; sorts by last activity.
@@ -39,7 +46,7 @@ Contracts
 - Normalizes workspace keys from source paths to group outputs.
 
 Related
-- Ingestor CLI: `script/chat_logs_to_sqlite.py` generates the DB used by `--database`.
+- Ingestor CLI: `src/catalog/ingest.py` generates the DB used by `--database`.
 
 Backlinks
 - Architecture: ../../layer-3/architecture.mdmd.md

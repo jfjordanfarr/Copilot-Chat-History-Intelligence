@@ -13,8 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from chat_logs_to_sqlite import gather_input_files, is_vscode_chat_session
-from copilot_markdown import render_session_markdown
-from copilot_markdown.markdown import ms_to_iso
+from .markdown import ms_to_iso, render_session_markdown
 
 
 class UserVisibleError(RuntimeError):
@@ -61,6 +60,12 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         "--raw-actions",
         action="store_true",
         help="Include raw JSON payloads for action blocks (verbose).",
+    )
+    parser.add_argument(
+        "--lod",
+        type=int,
+        choices=[0],
+        help="Render a specific level-of-detail transcript (0 = Copy-All style with fenced blocks collapsed to ...).",
     )
     parser.add_argument(
         "--database",
@@ -401,6 +406,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             include_status=args.include_status,
             include_raw_actions=args.raw_actions,
             cross_session_dir=cross_dir,
+            lod_level=args.lod,
         )
         export_session(markdown, destination)
 

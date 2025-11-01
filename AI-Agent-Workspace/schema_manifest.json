@@ -1,0 +1,152 @@
+{
+  "schema_version": "2",
+  "database_file": "live_chat.db",
+  "schema_history": [
+    {
+      "version": "1",
+      "released": "2025-10-18",
+      "changes": [
+        "Initial catalog with prompts, prompt_logs, tool_results tables, and helper views."
+      ]
+    },
+    {
+      "version": "2",
+      "released": "2025-10-22",
+      "changes": [
+        "Added source_kind classifier to prompts for downstream filtering.",
+        "Introduced schema migration runner for forward-compatible upgrades."
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "name": "prompts",
+      "description": "One row per Copilot prompt.",
+      "columns": [
+        {
+          "name": "prompt_id",
+          "type": "TEXT",
+          "meaning": "Stable identifier for the prompt."
+        },
+        {
+          "name": "prompt_text",
+          "type": "TEXT",
+          "meaning": "User-authored prompt text."
+        },
+        {
+          "name": "has_seen",
+          "type": "INTEGER",
+          "meaning": "Whether the prompt has been rendered in the UI."
+        },
+        {
+          "name": "log_count",
+          "type": "INTEGER",
+          "meaning": "Number of log entries associated with the prompt."
+        },
+        {
+          "name": "source_file",
+          "type": "TEXT",
+          "meaning": "Original chat history file path (.chatreplay.json or VS Code chatSessions .json)."
+        },
+        {
+          "name": "source_kind",
+          "type": "TEXT",
+          "meaning": "Classifier describing the origin of the prompt (chatreplay, vscodeSession, etc.)."
+        },
+        {
+          "name": "imported_at",
+          "type": "TEXT",
+          "meaning": "UTC timestamp of import."
+        },
+        {
+          "name": "raw_json",
+          "type": "TEXT",
+          "meaning": "Full prompt payload."
+        }
+      ]
+    },
+    {
+      "name": "prompt_logs",
+      "description": "Detailed log entries per prompt, including tool calls and metadata.",
+      "columns": [
+        {
+          "name": "prompt_id",
+          "type": "TEXT",
+          "meaning": "Foreign key to prompts."
+        },
+        {
+          "name": "log_id",
+          "type": "TEXT",
+          "meaning": "Log entry identifier."
+        },
+        {
+          "name": "log_index",
+          "type": "INTEGER",
+          "meaning": "Ordering index."
+        },
+        {
+          "name": "kind",
+          "type": "TEXT",
+          "meaning": "Entry classification (request, toolCall, element, etc.)."
+        },
+        {
+          "name": "time",
+          "type": "TEXT",
+          "meaning": "Timestamp when available."
+        },
+        {
+          "name": "summary",
+          "type": "TEXT",
+          "meaning": "Readable summary of the entry."
+        },
+        {
+          "name": "raw_json",
+          "type": "TEXT",
+          "meaning": "Full log payload."
+        }
+      ]
+    },
+    {
+      "name": "tool_results",
+      "description": "Flattened tool responses for toolCall entries.",
+      "columns": [
+        {
+          "name": "prompt_id",
+          "type": "TEXT",
+          "meaning": "Foreign key to prompts."
+        },
+        {
+          "name": "log_id",
+          "type": "TEXT",
+          "meaning": "Matches prompt_logs.log_id."
+        },
+        {
+          "name": "part_index",
+          "type": "INTEGER",
+          "meaning": "Ordering for multipart responses."
+        },
+        {
+          "name": "content",
+          "type": "TEXT",
+          "meaning": "Tool output snippet."
+        }
+      ]
+    }
+  ],
+  "views": [
+    {
+      "name": "tool_call_details",
+      "description": "Convenience view joining prompts, prompt_logs, and tool_results for toolCall entries."
+    },
+    {
+      "name": "prompt_activity",
+      "description": "Aggregated counts of log entry kinds per prompt."
+    }
+  ],
+  "sample_queries": [
+    "SELECT prompt_id, prompt_text FROM prompts ORDER BY imported_at DESC LIMIT 5;",
+    "SELECT prompt_text, kind, summary FROM prompt_logs JOIN prompts USING(prompt_id) WHERE kind <> 'toolCall' ORDER BY imported_at DESC LIMIT 10;",
+    "SELECT prompt_text, summary, tool_content FROM tool_call_details WHERE tool_content IS NOT NULL ORDER BY imported_at DESC LIMIT 5;",
+    "SELECT kind, COUNT(*) AS total FROM prompt_logs GROUP BY kind ORDER BY total DESC;"
+  ]
+}

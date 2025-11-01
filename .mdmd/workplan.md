@@ -1,4 +1,4 @@
-# Workplan — Progress Census, Backlog, and Migration Readiness (2025-10-22)
+# Workplan — Progress Census, Backlog, and Migration Readiness (2025-10-31)
 
 This document organizes current progress against requirements, defines tangible work items with acceptance criteria, and outlines how we’ll migrate this workspace without losing learnings.
 
@@ -8,93 +8,85 @@ Status keys: Fulfilled ✓ · Partial △ · Missing ○
 
 - R001 — Catalog ingestion: ✓
   - Done: Auto-scan VS Code storage; normalize to SQLite; helper views; manifest + README; schema version policy with migrations and change log.
-  - Gaps: Add scoping filters (by date/workspace/session).
+  - Gaps: Config-driven path overrides (portability) and friendly CLI scoping UX.
 
-- R002 — Markdown export (UI-parity + signal): ✓/△
-  - Done: UI-parity transcript; Actions blocks; per-turn counts; session Actions summary; raw mode; Apply Patch compaction.
-  - Gaps: Cross-session motif counts inline; sequence motif n-grams; canceled/terminated markers belong to R003 but surface here.
+- R002 — Markdown export (UI-parity + signal): ✓
+  - Done: UI-parity transcript; Actions blocks; per-turn counts; session Actions + Status summary; raw mode; Apply Patch compaction; cross-session annotations; sequence motifs; scoped export filters.
+  - Gaps: LOD summary extraction (headline stats + quick context).
 
-- R003 — Failure visibility: △
-  - Done: Exit code suffix; stderr-first tail with caps + “(truncated)”; interactive/prompt detection.
-  - Gaps: Explicit canceled/terminated marker; warning tails when exit=0 but stderr present.
+- R003 — Failure & warning visibility: ✓
+  - Done: Exit code suffix; stderr-first tail with caps + “(truncated)”; interactive/prompt detection; canceled/terminated markers; warning tails.
+  - Gaps: Ensure warning tails are tunable via config.
 
-- R004 — Motif detection: △
-  - Done: Within-session “Seen before (Nx)”; “Motifs (repeats)” section.
-  - Gaps: Cross-session motif counts inline; n-gram sequence motifs (pairs/triples).
+- R004 — Motif detection & LOD cues: ✓/△
+  - Done: Within-session “Seen before (Nx)”; “Motifs (repeats)” section; cross-session annotations; sequence motif n-grams.
+  - Gaps: LOD summaries that distill motif/action stats into ultra-compact briefs and a LOD-0 export that mirrors Copy All text with code blocks collapsed to `...`.
 
 - R005 — Recall tooling: ✓/△
-  - Done: TF-IDF recall with caching; motif recall CLI; export A/B analyzer.
-  - Gaps: MCP endpoints; richer filters/scopes parity with ingestion/export.
+  - Done: TF-IDF recall with caching; motif recall CLI; export A/B analyzer; scoped CLI filters.
+  - Gaps: MCP endpoints; LOD summary generation; config-based paths.
 
-- R006 — CLI ergonomics (Windows-first): △
+- R006 — CLI ergonomics (Windows-first, portable): △
   - Done: PowerShell-safe commands; helper scripts; guidance in instructions.
   - Gaps: Config-based path resolution for portability; simple bootstrap to rehydrate on new machine.
 
 - NFR001 Performance: △ (indexes/cache exist; formal caps/tunables need doc)
 - NFR002 Reliability: △ (resilient parsers; needs tests/CI)
 - NFR003 Auditability: ✓ (compact, status-aware exports)
-- NFR004 Privacy: ○ (redaction policy + toggle not implemented)
+- NFR004 Privacy: ○ (redaction policy + toggle pending)
 - NFR005 Portability: △ (Windows-first done; cross-platform guidance pending)
 
 ## 2) Backlog — actionable work items (WIDs)
 
 Each item lists requirement mappings and acceptance criteria.
 
-- W101 — Cross-session motif counts inline (R002, R004)
-  - Implement exporter support to load/export a motif index across exports and annotate “Seen across N sessions (M× total)”.
-  - Accept: Re-export current session → repeated commands show cross-session counts; compare export shows new annotations.
+- W101 — Cross-session motif counts inline (R002, R004) — ✓
+  - Implemented annotations and reuse of motif index; re-export confirmed.
 
-- W102 — Sequence motif n-grams (R004)
-  - Detect frequent 2- and 3-action chains (e.g., Search→Read, Terminal→Terminal) and summarize at session end; optional inline tag “Repeated sequence (K×)”.
-  - Accept: Export includes a “Sequence motifs” section with top-N sequences and counts.
+- W102 — Sequence motif n-grams (R004) — ✓
+  - Implemented bigram/trigram counts surfaced under “Sequence motifs”.
 
-- W103 — Canceled/terminated markers (R003)
-  - Surface explicit “Canceled”/“Terminated” in Actions blocks when tool/status indicates it; include in per-turn/session summaries.
-  - Accept: A known canceled turn renders an inline marker and increments a “Canceled” counter in the Actions summary.
+- W103 — Canceled/terminated markers (R003) — ✓
+  - Inline markers and session summaries updated.
 
-- W104 — Warning tails on success (R003)
-  - When exit=0 but stderr has content, render a small “Last stderr lines (warnings)” tail with caps.
-  - Accept: Export of a success-with-stderr run shows a warnings tail without implying failure.
+- W104 — Warning tails on success (R003) — ✓
+  - Export now surfaces warning tails; pending tunable caps.
 
-- W105 — Scoped ingestion/export flags (R001, R005)
-  - Add `--since`, `--until`, `--workspace-key`, and `--session` filters to ingestor/exporter with consistent semantics.
-  - Accept: Running with `--since` limits DB rows and export contents; verified via summarize_exports metrics.
+- W105 — Scoped ingestion/export flags (R001, R005) — ✓
+  - Export CLI supports `--since/--until/--workspace-key`; ingestion scoping next iteration.
 
-✓ W106 — Schema versioning & migrations (R001)
-  - Status: Completed 2025-10-22. Implemented catalog version 2 with migrations, manifest/README change log, and prompt `source_kind` classifier.
+- ✓ W106 — Schema versioning & migrations (R001)
+  - Implemented catalog version 2 with migrations, manifest/README change log, and prompt `source_kind` classifier.
 
 - W107 — Privacy redaction toggle (NFR004)
-  - Add `--redact` flag to exporter; default policy to drop keys like `encrypted` and mask sensitive patterns; document policy.
-  - Accept: Export in redact mode omits/obfuscates sensitive fields; policy is testable.
+  - Pending implementation.
 
 - W108 — MCP endpoints for recall/motifs (R005)
-  - Expose `seen_before` and `recall_topk` as MCP tools; document request/response schemas.
-  - Accept: From a minimal MCP client, both endpoints return expected payloads for a known query.
+  - Pending design/prototype.
 
 - W109 — Minimal tests & CI (NFR001, NFR002)
-  - Add unit tests: exporter golden snapshot for a small fixture; recall TF-IDF returns known top result; wire GitHub Actions.
-  - Accept: CI passes on PR; local tests green.
+  - Pending.
 
 - W110 — Cross-platform notes & shell abstraction (NFR005)
-  - Add macOS/Linux equivalents for quickstarts; note shell detection in Terminal summaries; doc-only initially.
-  - Accept: Docs updated; a Linux quickstart section exists; no Windows-only instructions remain unflagged.
+  - Pending documentation.
 
 - W111 — Config-based paths for portability (R006)
-  - Introduce an optional `AI-Agent-Workspace/recall_config.json` to centralize DB/exports/cache paths; CLIs accept `--config`.
-  - Accept: Moving workspace and updating one config key is sufficient to run recall/export.
+  - Pending implementation.
 
-- W112 — Migration guide & helper checklist (R006, NFR003)
-  - Author a precise guide with copy lists and verification steps; include a pre-flight checklist.
-  - Accept: Following the guide reproduces exports/recall in a new workspace.
+- ✓ W112 — Migration guide & helper checklist (R006, NFR003)
+  - MigrationGuide.md authored; verification steps recorded.
 
 - W113 — Cancellation/timeout semantics doc (R003)
-  - Document how canceled/timeout statuses are detected and reflected in counts and motifs.
-  - Accept: Architecture doc updated; exporter behavior documented with examples.
+  - Incorporated into updated requirements/architecture; dedicated doc optional.
 
-Suggested milestone grouping
-- M4 Now → Tonight: W101, W103, W112
-- M5 Next: W104, W105
-- M6 Then: W107, W108, W109, W110, W111, W113
+- W114 — LOD-0 Copy-All surrogate export (R004) — Pending
+  - Produce a lowest-detail transcript that preserves message order but replaces the contents of every fenced/quoted code block with `...`.
+  - Accept: Running the export with `--lod 0` yields output where each code/terminal block retains its fences and language hints yet contains only `...` markers.
+
+Suggested milestone grouping (post-2025-10-31)
+- M4 (Complete): W101, W103, W104, W105, W112
+- M5 (Next): W107, W108, W109, W110, W111
+- M6 (Then): LOD summaries, MCP endpoint hardening, performance tunables, config rollout, privacy testing.
 
 ## 3) How we get from here to there (organization of work)
 

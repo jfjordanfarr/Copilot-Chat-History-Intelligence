@@ -1,10 +1,15 @@
-# Layer 4 — script/copilot_markdown/response_parser.py
+# Layer 4 — src/export/response_parser.py
 
 Implementation
-- File: [vscode-copilot-chat-main/script/copilot_markdown/response_parser.py](../../../vscode-copilot-chat-main/script/copilot_markdown/response_parser.py)
+- File: [src/export/response_parser.py](../../../src/export/response_parser.py)
 
-Purpose
-- Hydrate `metadata.messages[]` when tool-call JSON is embedded inside response text rather than provided as structured metadata.
+What it does
+- Hydrates `metadata.messages[]` when tool-call JSON is embedded inside response text rather than provided as structured metadata.
+
+Why it exists
+- **Format evolution handling**: VS Code chat storage format changed over time; older sessions embed tool JSON in response text.
+- **Backward compatibility**: Enables consistent Actions rendering across all historical sessions regardless of storage format.
+- **Noise removal**: Strips embedded JSON from response text after extracting it, improving readability.
 
 Public surface
 - inject_actions_into_request(request: dict) -> dict
@@ -36,7 +41,7 @@ Contracts
 - Keeps textual content whenever possible to avoid losing user-visible explanations.
 
 Downstream
-- Enables patterns.py + actions.py to format Actions blocks even for sessions using newer “JSON-in-text” emission styles.
+- Enables export.patterns + export.actions to format Actions blocks even for sessions using newer "JSON-in-text" emission styles.
 
 Backlinks
 - Architecture: ../../layer-3/architecture.mdmd.md

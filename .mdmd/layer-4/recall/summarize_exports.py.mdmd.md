@@ -1,7 +1,7 @@
-# Layer 4 — AI-Agent-Workspace/summarize_exports.py
+# Layer 4 — summarize_exports.py
 
 Implementation
-- File: [AI-Agent-Workspace/summarize_exports.py](../../../AI-Agent-Workspace/summarize_exports.py)
+- File: [summarize_exports.py](../../../summarize_exports.py)
 
 Purpose
 - Quick counts from compact exports and an optional A/B comparison report to track exporter changes.

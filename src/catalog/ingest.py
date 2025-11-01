@@ -18,8 +18,8 @@ Repeated imports are idempotent; existing rows are updated when their content
 changes. Use ``sqlite3 <db>`` or any client to explore the resulting database.
 
 Example:
-    python chat_logs_to_sqlite.py exports/copilot_all_prompts.chatreplay.json
-    python chat_logs_to_sqlite.py --db copilot.db
+    python -m catalog.ingest exports/copilot_all_prompts.chatreplay.json
+    python -m catalog.ingest --db copilot.db
 """
 from __future__ import annotations
 
@@ -800,7 +800,7 @@ def write_support_files(output_dir: Path, db_path: Path) -> List[Path]:
         "4. For large result sets, add `LIMIT` clauses to keep outputs manageable.",
         "",
         "## Regeneration",
-        "Run `python script/chat_logs_to_sqlite.py` to refresh the catalog after exporting new prompt logs or mirroring live data.",
+        "Run `python -m catalog.ingest` to refresh the catalog after exporting new prompt logs or mirroring live data.",
     ]
 
     readme_lines.extend(["", "## Schema Change Log", ""])

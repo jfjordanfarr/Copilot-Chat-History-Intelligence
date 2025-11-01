@@ -1,4 +1,4 @@
-# MDMD Consistency Analysis (2025-10-22)
+# MDMD Consistency Analysis (2025-10-31)
 
 Purpose
 - Place Layer 1–4 docs in joint context, verify cross-layer traceability, and surface blind spots or gaps to resolve next.
@@ -24,48 +24,36 @@ Findings: consistency
 - Requirements ↔ Architecture: components cover all FRs/NFRs with clear data flows and registries.
 - Architecture ↔ Implementation: Layer 4 docs exist for each named component; inputs/outputs and edge cases are captured.
 
-Identified blind spots / gaps
-1) Cross‑session motif counts inline
-   - L1/L2 mention “across sessions”; L3 explains motif basics but not cross‑session inline annotations.
-   - Action: extend exporter to load session‑external motif index and annotate “Seen across N sessions (M×)”.
+Identified blind spots / gaps (post-2025-10-31 updates)
+1) LOD pipeline documentation
+   - LOD-0 export now exists in code + L4 doc (Copy-All style with `...` fences). Higher-level summary specs still TBD.
+   - Action: Define LOD-1/2 contracts (inputs/outputs) once we know the summarisation layers beyond LOD-0.
 
-2) Sequence motifs (n‑grams)
-   - L1/L2 roadmap mentions pairs/triples; L3 lacks concrete design notes.
-   - Action: add L3 design for sequence extraction and a small L4 contract (helper module or section in markdown.py).
+2) MCP surface details
+   - L1/L2/L3 now mention MCP placeholders; no interface schema yet.
+   - Action: draft request/response examples and plan tests (future doc or prototype).
 
-3) MCP surface
-   - L1 roadmap includes MCP; L2/L3 don’t define endpoints or contracts.
-   - Action: add L2 interface stub and L3 component notes; optional L4 doc for an MCP adapter.
+3) Testing & CI
+   - Still missing automated coverage; requirements refer to future work.
+   - Action: add minimal tests and CI entry.
 
-4) Testing & CI
-   - No explicit tests/fixtures for exporter/recall; acceptance checks are manual.
-   - Action: add minimal tests (golden export snapshot; TF‑IDF recall sample) and document in L2/L3.
+4) Privacy redaction implementation
+   - Requirements call for configurable redaction; code still default-prunes only.
+   - Action: implement `--redact` path and document behavior.
 
-5) Schema/versioning & migrations
-   - L2 references manifest but not version bump policies; L3 lacks migration approach.
-   - Action: add `schema_version` and a simple migration note; include in manifest and README.
+5) Performance envelopes & tunables
+   - Requirements note caps; architecture lacks concrete defaults.
+   - Action: specify recommended line/char caps and knob locations (doc + code).
 
-6) Privacy/PII redaction specifics
-   - L2 mentions pruning sensitive keys; no concrete list or toggle.
-   - Action: add redaction policy and a `--redact` flag; document in L2 and L3.
+6) Portability guidance
+   - Requirements mention shell differences; docs/code need usage notes.
+   - Action: add quickstart appendix or inline doc updates.
 
-7) Performance envelopes & big‑O notes
-   - L2/NFRs set targets; L3 lacks rough complexity bounds for motif/recall and export passes.
-   - Action: add brief performance notes and caps (lines, chars) in L3/L4 with tunables.
-
-8) Portability & shell abstraction
-   - Windows‑first guidance exists; cross‑platform pathways not specified.
-   - Action: add a note on bash/zsh equivalents and how to detect shell for context lines.
-
-9) Cancellation/timeout semantics
-   - Exporter shows canceled requests; behavior for partially produced outputs not formalized.
-   - Action: document how cancellations propagate to Actions summaries and motif counts.
-
-10) Catalog filters & scoping
-   - Mentioned informally (e.g., “constrain to today”); not surfaced as interfaces.
-   - Action: add L2 options and L3 plumbing for scoped ingestion/export (by date/workspace/session).
+7) Catalog scoping & config
+   - Requirements mention config and scoped ingestion/export; code partly implements CLI flags, config pending.
+   - Action: land shared config + doc.
 
 Next steps
-- Update L2 to include MCP interface stub, redaction flag, and scoped ingestion/export.
-- Update L3 with cross‑session motif index design, sequence motif extraction, and performance caps.
-- Implement exporter changes (cross‑session counts) and add a micro test harness.
+- Capture L4 hooks for LOD summaries.
+- Prototype MCP stubs and document payloads.
+- Prioritize tests/CI, redaction toggle, config portability work.

@@ -103,6 +103,80 @@ def render_response_content(response: Any) -> str:
     return str(response)
 
 
+_FENCE_OPEN_RE = re.compile(r"^(?P<indent>[ \t]*)(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
+_TRIPLE_OPEN_RE = re.compile(r'^(?P<indent>[ \t]*)(?P<quote>"""|\'\'\')(?:[ \t]*)$')
+
+
+def _collapse_structured_blocks(text: str) -> str:
+    if not text:
+        return text
+
+    def _collapse_fences(lines: List[str]) -> List[str]:
+        collapsed: List[str] = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            fence_match = _FENCE_OPEN_RE.match(line)
+            if fence_match:
+                indent = fence_match.group("indent") or ""
+                fence = fence_match.group("fence")
+                info = fence_match.group("info") or ""
+                collapsed.append(f"{indent}{fence}{info}")
+                collapsed.append(f"{indent}...")
+                i += 1
+                while i < len(lines):
+                    maybe_close = lines[i]
+                    stripped = maybe_close.strip()
+                    if stripped.startswith(fence) and stripped[len(fence) :].strip() == "":
+                        collapsed.append(maybe_close)
+                        break
+                    i += 1
+                else:
+                    collapsed.append(f"{indent}{fence}")
+                    return collapsed + lines[i:]
+                i += 1
+                continue
+            collapsed.append(line)
+            i += 1
+        return collapsed
+
+    def _collapse_triple_quotes(lines: List[str]) -> List[str]:
+        collapsed: List[str] = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            triple_match = _TRIPLE_OPEN_RE.match(line)
+            if triple_match and i + 1 < len(lines):
+                indent = triple_match.group("indent") or ""
+                quote = triple_match.group("quote")
+                collapsed.append(f"{indent}{quote}")
+                collapsed.append(f"{indent}...")
+                i += 1
+                while i < len(lines):
+                    maybe_close = lines[i]
+                    if maybe_close.strip() == quote:
+                        collapsed.append(maybe_close)
+                        break
+                    i += 1
+                else:
+                    collapsed.append(f"{indent}{quote}")
+                    return collapsed + lines[i:]
+                i += 1
+                continue
+            collapsed.append(line)
+            i += 1
+        return collapsed
+
+    ends_with_newline = text.endswith("\n")
+    lines = text.splitlines()
+    lines = _collapse_fences(lines)
+    lines = _collapse_triple_quotes(lines)
+    collapsed_text = "\n".join(lines)
+    if ends_with_newline:
+        collapsed_text += "\n"
+    return collapsed_text
+
+
 def render_reference_entry(reference: Any) -> Optional[str]:
     if isinstance(reference, str):
         return reference
@@ -483,13 +557,59 @@ def render_turn(
     return squeeze(lines)
 
 
+def _render_lod0_transcript(session: Dict[str, Any]) -> str:
+    requests = session.get("requests")
+    if not isinstance(requests, list) or not requests:
+        return ""
+
+    user_label = (
+        session.get("requesterDisplayName")
+        or session.get("requesterUsername")
+        or session.get("requester")
+        or "USER"
+    )
+    assistant_label = (
+        session.get("responderDisplayName")
+        or session.get("responderUsername")
+        or "GitHub Copilot"
+    )
+
+    lines: List[str] = []
+    for request in requests:
+        if not isinstance(request, dict):
+            continue
+
+        user_text = render_message_text(request.get("message"))
+        if user_text:
+            collapsed_user = _collapse_structured_blocks(user_text)
+            lines.append(f"{user_label}: {collapsed_user}")
+            lines.append("")
+
+        response_text = render_response_content(request.get("response"))
+        if response_text:
+            collapsed_response = _collapse_structured_blocks(response_text)
+            lines.append(f"{assistant_label}: {collapsed_response}")
+            lines.append("")
+
+    while lines and lines[-1] == "":
+        lines.pop()
+    if not lines:
+        return ""
+    return "\n".join(lines) + "\n"
+
+
 def render_session_markdown(
     session: Dict[str, Any],
     *,
     include_status: bool,
     include_raw_actions: bool = False,
     cross_session_dir: Optional[Path] = None,
+    lod_level: Optional[int] = None,
 ) -> str:
+    if lod_level == 0:
+        lod0 = _render_lod0_transcript(session)
+        if lod0:
+            return lod0
     session_id = session.get("sessionId") or "unknown-session"
     requester = session.get("requesterUsername")
     responder = session.get("responderUsername") or "GitHub Copilot"

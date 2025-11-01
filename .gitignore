@@ -1,0 +1,10 @@
+# Local workspace artefacts
+AI-Agent-Workspace/_temp/
+AI-Agent-Workspace/live_chat.db
+.link-aware-diagnostics/
+
+# Editor settings
+.vscode/
+
+# Python caches
+__pycache__/

@@ -1,13 +1,19 @@
-# Layer 4 — script/chat_logs_to_sqlite.py
+# Layer 4 — src/catalog/ingest.py
 
 Implementation
-- File: [vscode-copilot-chat-main/script/chat_logs_to_sqlite.py](../../../vscode-copilot-chat-main/script/chat_logs_to_sqlite.py)
+- File: [src/catalog/ingest.py](../../../src/catalog/ingest.py)
 
-Purpose
-- Hydrate a normalized SQLite catalog from Copilot chat logs (VS Code storage or .chatreplay.json) for recall and analysis.
+What it does
+- Hydrates a normalized SQLite catalog from Copilot chat logs (VS Code storage or .chatreplay.json) for recall and analysis.
+
+Why it exists
+- **Zero-manual-export requirement**: User demanded automated ingestion without manual "Export Prompt Logs" steps from debug view.
+- **Historical data access**: VS Code chat UI only shows current workspace; this enables cross-workspace, cross-session queries.
+- **LLM-navigable schema**: Generates schema manifest + README so LLMs can zero-shot query the catalog.
+- **Foundation for recall**: Provides the normalized data layer for "Have I done this before?" tooling.
 
 Public surface
-- CLI: chat_logs_to_sqlite.py [path?] [--db file] [--output-dir dir] [--reset]
+- CLI: python -m catalog.ingest [path?] [--db file] [--output-dir dir] [--reset]
 
 Key functions
 - parse_args(argv) -> Namespace: parse flags.

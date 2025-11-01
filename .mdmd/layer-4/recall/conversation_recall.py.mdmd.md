@@ -1,13 +1,19 @@
-# Layer 4 — conversation_recall.py
+# Layer 4 — src/recall/conversation_recall.py
 
 Implementation
-- File: [conversation_recall.py](../../../conversation_recall.py)
+- File: [src/recall/conversation_recall.py](../../../src/recall/conversation_recall.py)
 
-Purpose
+What it does
 - Fast, local "Have I done this before?" search over the SQLite catalog using TF‑IDF with on‑disk caching.
 
+Why it exists
+- **Core mission fulfillment**: Directly answers "Have I encountered this before?" query that motivated the entire project.
+- **Performance via caching**: First run takes 1+ minute on high-end hardware; caching makes subsequent queries sub-second.
+- **Cross-workspace recall**: Searches all historical conversations across every workspace on the machine.
+- **MCP foundation**: Terminal-executable script designed to become MCP tool/server for high-agency AI behaviors.
+
 Public surface
-- CLI: conversation_recall.py "<query>" [--limit N] [--agent ID] [--session ID ...] [--db path] [--cache-dir dir] [--no-cache]
+- CLI: python -m recall.conversation_recall "<query>" [--limit N] [--agent ID] [--session ID ...] [--db path] [--cache-dir dir] [--no-cache]
 
 Core types
 - Document { doc_id, prompt_id, session_id?, agent_id?, label, text, tags }

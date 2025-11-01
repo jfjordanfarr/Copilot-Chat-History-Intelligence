@@ -25,47 +25,20 @@ Key capabilities we are pursuing:
 - Copilot scratch + chat history: `AI-Agent-Workspace/` 
 - **Permanent documentation lives in `.mdmd/` using the Membrane Design MarkDown (MDMD) structure**
 
-## Workspace-Specific Lessons [LIKELY NEEDS UPDATING FOR NEW WORKSPACE]
-
-- **Chat exporter**: Run `AI-Agent-Workspace/list_sessions.py` to grab recent session IDs, then invoke `script/export_chat_sessions_to_markdown.py --database AI-Agent-Workspace/live_chat.db --session <id> --include-status`. The exporter revives tool output; watch for lines like `> _Status_: …` to spot terminal failures (e.g., a duplicate `npm run test:extension` was marked `Canceled`). Use this to refine future tool usage.
-- **PowerShell guardrails**: Avoid POSIX here-doc syntax such as `python - <<'PY'`—it hangs in Windows shells for 30+ minutes. Either drop code into a helper file or use `C:/…/.venv/Scripts/python.exe -c "…"`. **NEVER** use multiline Python commands with complex regex patterns in PowerShell one-liners—they consistently hang. If a Python command needs more than simple variable assignment, create a helper script in `AI-Agent-Workspace/`.
-- **Python REPL detection**: If you see `>>>` prompt in terminal output, you've accidentally triggered Python REPL instead of executing a command. Use `exit()` to escape or start a new terminal. Always verify commands use explicit `-c` flag for one-liners.
-- **Conversation recall**: `conversation_recall.py` now caches TF-IDF vectors under `AI-Agent-Workspace/.cache/conversation_recall/`. First run is heavy; subsequent queries are fast. Rebuild with `--no-cache` when the SQLite catalog changes.
-- **Complex data processing**: When analyzing large JSON files (12k+ lines) or running regex patterns against conversation exports, expect significant processing time even on high-end hardware. Use simple `Select-String` or `grep_search` for pattern discovery before attempting complex Python analysis.
-
-## [THIS NEEDS UDPATING FOR NEW WORKSPACE] Quickstart: Refresh DB and export today's chat (Windows PowerShell)
-
-Use these steps to rebuild the chat catalog from VS Code storage and write a compact export you can compare against Copy-All. Commands assume this repo’s venv and paths.
-
-1) Rebuild the SQLite catalog (drops and recreates tables)
-
-```powershell
-C:/Users/User/Downloads/vscode-copilot-chat-main/.venv/Scripts/python.exe C:/Users/User/Downloads/vscode-copilot-chat-main/vscode-copilot-chat-main/script/chat_logs_to_sqlite.py --db AI-Agent-Workspace/live_chat.db --reset
-```
-
-- What it does: Scans `%APPDATA%/Code/User/globalStorage/github.copilot-chat` and per-workspace `workspaceStorage/*/chatSessions`. Writes `AI-Agent-Workspace/live_chat.db`, `AI-Agent-Workspace/schema_manifest.json`.
-
-2) List most recent sessions (newest first) and copy the top ID
-
-```powershell
-C:/Users/User/Downloads/vscode-copilot-chat-main/.venv/Scripts/python.exe AI-Agent-Workspace/list_sessions.py
-```
-
-3) Export today’s latest to the canonical comparison file
-
-```powershell
-# Replace <top-id> with the first ID from the previous step
-C:/Users/User/Downloads/vscode-copilot-chat-main/.venv/Scripts/python.exe C:/Users/User/Downloads/vscode-copilot-chat-main/vscode-copilot-chat-main/script/export_chat_sessions_to_markdown.py --database AI-Agent-Workspace/live_chat.db --session <top-id> --output AI-Agent-Workspace/ChatHistory/exports/current-session-compressed.md --include-status
-```
-
 ## Documentation Conventions
 
 Our project aims to follow a 4-layered structure of markdown docs which progressively describes a solution of any type, from most abstract/public to most concrete/internal. 
-- Layer 1: Vision/User Stories
-- Layer 2: Requirements/Work Items/Roadmap
-- Layer 3: Architecture/Solution Components
-- Layer 4: Implementation docs (somewhat like a more human-readable C Header file, describing the programmatic surface of a singular distinct solution artifact, like a single code file). 
+- Layer 1: Vision/Features/User Stories/High-Level Roadmap. This layer is the answer to the overall question "What are we trying to accomplish?"
+- Layer 2: Requirements/Work Items/Issues/Epics/Tasks. This layer is the overall answer to the question "What must be done to accomplish it?"
+- Layer 3: Architecture/Solution Components. This layer is the overall answer to the question "How will it be accomplished?"
+- Layer 4: Implementation docs (somewhat like a more human-readable C Header file, describing the programmatic surface of a singular distinct solution artifact, like a single code file). This layer is the overall answer to the question "What has been accomplished so far?"
 
-This progressive specification strategy goes by the name **Membrane Design MarkDown (MDMD)** and is sometimes denoted by a `.mdmd.md` file extension. In the longer-term, `.mdmd.md` files aspire to be an AST-supported format which can be formally linked to code artifacts, enabling traceability from vision to implementation. MDMD, as envisioned, aims to create a reproducible and bidirectional bridge between code and docs, enabling docs-to-code, code-to-docs, or hybrid implementation strategies. **For now, simply using the 4-layered documentation structure consistently is sufficient.**
+This progressive specification strategy goes by the name **Membrane Design MarkDown (MDMD)** and is denoted by a `.mdmd.md` file extension. In the longer-term, `.mdmd.md` files aspire to be an AST-supported format which can be formally linked to code artifacts, enabling traceability from vision to implementation. MDMD, as envisioned, aims to create a reproducible and bidirectional bridge between code and docs, enabling docs-to-code, code-to-docs, or hybrid implementation strategies.
 
-The MDMD docs aim to preserve **permanent projectwide knowledge**. 
+**The key insight of MDMD is that markdown header sections, markdown links, and relative paths can be treated as a lightweight AST which can be parsed, analyzed, and linked to code artifacts.** 
+
+Unlike the `.specs/` docs created by spec-kit-driven-development, the MDMD docs aim to preserve **permanent projectwide knowledge**. 
+
+## Final Note: Context and Autosummarization
+
+Every ~64k-128k of tokens of chat history/context that goes through Github Copilot, an automatic summarization step occurs. Under the hood, this raises a new underlying conversation with a clean context window, save for the summary and the latest user prompt. This VS Code-initiated process makes a best attempt at enabling Github Copilot to continue its efforts uninterrupted across summarization windows but is far from perfect. If you exit an autosummarization process, try to rehydrate from the end of the active dev day's conversation history file to catch back up. 
