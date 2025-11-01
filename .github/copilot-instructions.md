@@ -11,13 +11,15 @@ Last updated: 2025-10-22
 
 ## What We Are Building
 
-We are building a Copilot-first recall system that makes prior work instantly discoverable. The vision is a fast, accurate search pipeline over Copilot chat history—hydrating SQLite catalogs directly from the extension’s global storage (no manual exports), caching TF-IDF/embedding indexes, and exposing CLIs or MCP surfaces—so Copilot can reliably answer: **“Have I done this before?”**
+We are building a Copilot-first recall system that lets the agent mine its own chat history and instantly answer **“Have I done this before?”** Every decision in this workspace should make it easier to rehydrate past conversations, spot repeated tool failures, and author sharper instructions for future runs—without asking the human for manual exports.
+
+Root problem statement: **Copilot begins new conversations (or emerges from autosummarizations) with virtually no historical narrative.** Our tooling must let the agent re-immerse itself in prior wins and failures quickly enough to reuse the exact tool-call parameters that actually succeeded before.
 
 Key capabilities we are pursuing:
-- **Lossless ingestion of historical chats**: mine the on-disk conversation JSON for every workspace, normalize it into an auditable SQLite catalog, and keep a readable Markdown trail that mirrors the VS Code chat UI while surfacing tool outcomes (especially failures).
-- **Action-aware markdown**: translate `toolCallRounds`/`toolCallResults` into compact “tool trace” summaries, collapse Apply Patch/terminal patterns, and highlight repeated or failing commands so Copilot can author better instructions for itself.
-- **Case-corpus recall tooling**: deliver keyword + semantic search over prompts, responses, and tool actions, with caching and filters fast enough to run mid-conversation and power higher-agency behaviors (“seen this failure three times—apply the fix”).
-- **Reusable APIs & MCP hooks**: design the catalog schema, helper views, and scripts so future automation (VS Code commands, MCP tools, other agents) can zero-shot smart queries against the same data.
+- **End-to-end ingestion from disk**: read the VS Code global-storage chat JSON directly (past and present sessions), normalize it into an auditable SQLite catalog, and keep the data refreshable without any Copy-All or debug-view steps from the user.
+- **UI-faithful markdown trails**: regenerate Markdown that mirrors the VS Code chat UI—status badges, tool results, terminal transcripts—so we can diff exporter output against Copy-All pastes and mine the same cues when drafting instruction files.
+- **High-agency recall tooling**: ship terminal-friendly scripts (and later MCP services) that fuse keyword + semantic search with aggressive caching, giving sub-second answers to the recall question even across large histories.
+- **Instruction-ready telemetry**: surface repeated command failures, cancellations, and long-running tools straight from the catalog/exporters so Copilot can tune its own `.instructions.md` guidance per workspace.
 
 ## Workspace Shape
 

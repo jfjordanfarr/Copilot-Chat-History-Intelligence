@@ -23,12 +23,11 @@ Functional requirements
 - Detect interactive hangs and annotate “Awaiting input (interactive)”.
 - Highlight canceled/terminated turns inline and in session summaries.
 
-### <a id="R004"></a> R004 — Motif detection & LOD cues
-- Normalize action block text (lowercase, mask paths/URIs/UUIDs, collapse numbers/whitespace).
-- Within-session: annotate repeated motifs with “Seen before (Nx)” and list top motifs.
-- Across sessions: annotate “Seen across N sessions (M× total)” and retain a motif index for reuse.
-- Generate sequence motifs (bigrams/trigrams) to highlight common action flows.
-- Provide hooks for deriving higher-level LOD summaries from motif data.
+### <a id="R004"></a> R004 — Repeat detection & LOD cues
+- Normalize action block text (lowercase, mask paths/URIs/UUIDs, collapse numbers/whitespace) so lightweight similarity scoring is viable.
+- Within-session: flag suspiciously similar action sequences with “Seen before (Nx)” and list the most repeated snippets when it materially informs next decisions.
+- Across sessions: annotate “Seen across N sessions (M× total)” only when similarity crosses an actionable threshold; keep heuristics tunable so we can escalate from simple fingerprints to richer analysis if it sharpens tool-call guidance.
+- Provide hooks for deriving higher-level LOD summaries from repeat/similarity data and expose just-enough APIs for future MCP integrations.
 - Deliver a lowest-detail LOD (LOD-0) export that mirrors Copy All text but replaces the interior of every fenced/quoted code block with `...` to preserve structure while minimizing tokens.
 
 ### <a id="R005"></a> R005 — Recall tooling
@@ -41,6 +40,11 @@ Functional requirements
 - Provide PowerShell-safe commands; avoid here-doc and multiline `python -c` with complex regex.
 - One-liners prefer helper `.py` scripts under `AI-Agent-Workspace/`.
 - Allow optional config file to centralize DB/export/cache paths for portability.
+
+### <a id="R007"></a> R007 — Migration readiness & traceability
+- Maintain a living development progress census and workplan that map requirement IDs to completion state (per 2025-10-22.md L2492).
+- Document the reverse-migration checklist and artifact triage so we can lift only Copilot-authored assets into new workspaces without losing history (2025-10-22.md L2492; 2025-10-23.md L69–1978).
+- Keep the user-intent census updated in ~1200-line increments and link requirement updates back to the census so spec-kit branches inherit an authoritative vision ledger (2025-11-01.md L1–648).
 
 Non‑functional requirements
 

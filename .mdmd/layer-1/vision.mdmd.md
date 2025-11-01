@@ -6,13 +6,13 @@ Purpose
 - Generate progressive “levels of detail” (LOD) artifacts—from high-level session synopses down to full tool traces—so agents can pick the smallest representation that still preserves the lesson.
 
 Grounding (sources)
-- Derived from a census of 62+ `jfjordanfarr:` prompts in `AI-Agent-Workspace/ChatHistory/2025-10-21.md` and deltas in `2025-10-22.md`.
-- Core themes across the prompts: zero manual exports; SQLite catalog as the durable audit trail; compact, UI-parity Markdown; failure visibility; motif (“seen before”) signals; Windows PowerShell guardrails; fast mid-conversation recall.
+- Derived from the user intent census spanning `2025-10-21.md`, `2025-10-22.md`, `2025-10-23.md`, `2025-10-31.md`, and `2025-11-01.md` Copy-All transcripts.
+- Core themes across the prompts: zero manual exports; SQLite catalog as the durable audit trail; compact, UI-parity Markdown; failure visibility; similarity-driven repeat detection; Windows PowerShell guardrails; fast mid-conversation recall; disciplined census updates ahead of spec-kit planning.
 
 Vision
 - Losslessly ingest Copilot chat histories from VS Code global storage and normalize them into a queryable SQLite catalog with explicit provenance and schema history.
 - Render compact “Actions” blocks for tools (Terminal, Apply Patch, Search, Read, etc.) with outcomes, statuses, failure tails, and cross-session counts so transcripts stay readable yet decision-ready.
-- Detect repeats (“motifs”) within and across sessions, including recurring action sequences, and annotate them inline (“Seen before (Nx)” / “Seen across N sessions”), enabling Copilot to learn from prior attempts mid-flight.
+- Detect reused or suspiciously similar action sequences, annotate them inline when they signal a likely repeat (“Seen before (Nx)” / “Seen across N sessions”), and keep the detection lightweight enough to justify the insight (similarity heuristics first, richer motif analysis only if it sharpens tool-call guidance).
 - Produce layered outputs: session exports, motif indexes, and future ultra-compact LOD summaries that an agent can skim before drilling into full transcripts.
 - Expose a small set of CLIs (and later MCP hooks) to power “have I done this before?” queries that are fast enough to use during a chat.
 
@@ -42,10 +42,10 @@ Risks & mitigations
 
 Roadmap sketch
 - M1 ingestion to SQLite with schema manifest and README; basic export parity with UI. (Complete)
-- M2 compact action renderers, per-turn counts, Actions summary; failure tails. (Complete)
-- M3 motif fingerprints + “Seen before (Nx)” + Motifs section. (Complete)
-- M4 cross-session motif counts + sequence motifs + scoped filters + warning tails. (Complete)
-- M5 LOD summary generation + MCP surface for recall/motif queries + privacy toggle + test/CI harness.
+- M2 compact action renderers, per-turn counts, Actions summary; failure tails. (In progress — warning tails on success still open via W104.)
+- M3 repeat-similarity annotations (“Seen before”) within a session plus Motifs section. (In progress — refine heuristics per 2025-11-01 guidance.)
+- M4 cross-session similarity counts, scoped filters, and warning-on-success coverage. (Pending W102/W105.)
+- M5 LOD summary generation + MCP surface for recall/search + privacy toggle + test/CI harness.
 
 Next layer
 - Continue to Layer 2 (Requirements & Roadmap): ../layer-2/requirements.mdmd.md
