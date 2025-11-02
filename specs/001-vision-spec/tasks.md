@@ -19,10 +19,10 @@
 
 **Purpose**: Establish shared fixtures and helpers for the ingestion, export, and recall test suites.
 
-- [ ] T001 Create pytest fixtures for `workspace_root` and `sample_catalog_path` in `tests/conftest.py`
-- [ ] T002 [P] Implement catalog fixture builder utilities in `tests/helpers/catalog_builder.py`
-- [ ] T003 [P] Document test fixture usage and sample data expectations in `tests/README.md`
-- [ ] T031 [P] Scaffold module-adjacent unit test packages (`src/catalog/tests`, `src/export/tests`, `src/recall/tests`) with `__init__.py`, README stubs, and pytest discovery configuration
+- [x] T001 Create pytest fixtures for `workspace_root` and `sample_catalog_path` in `tests/conftest.py`
+- [x] T002 [P] Implement catalog fixture builder utilities in `tests/helpers/catalog_builder.py`
+- [x] T003 [P] Document test fixture usage and sample data expectations in `tests/README.md`
+- [x] T031 [P] Establish centralized unit-test scaffolding under `tests/unit/` (README, discovery notes) that reuses the shared fixtures in `tests/conftest.py`
 
 ---
 
@@ -30,14 +30,14 @@
 
 **Purpose**: Normalize Copilot telemetry into the schema described in data-model.md, enforce workspace-scoped privacy guardrails, and expose shared catalog helpers. **No user story work may begin until these tasks complete.**
 
-- [ ] T004 Populate normalized tables (`requests`, `request_parts`, `tool_outputs`) in `src/catalog/ingest.py`
-- [ ] T005 [P] Regenerate `schema_manifest.json` + `README_CopilotChatHistory.md` with new schema metadata in `src/catalog/ingest.py`
-- [ ] T006 [P] Add catalog query helpers (`fetch_session_documents`, `fetch_tool_results`) in `src/catalog/__init__.py`
-- [ ] T007 Create ingestion integration test validating tables and manifest outputs in `tests/integration/test_catalog_ingest.py`
-- [ ] T026 [P] Enforce workspace-scoped storage and configurable redaction toggles in `src/catalog/ingest.py` with audit logging saved to `AI-Agent-Workspace/_temp/ingest_audit.json`
-- [ ] T027 Add regression check `tests/regression/test_redaction_guardrails.py` that simulates secrets in telemetry and asserts no export/recall surface raw values
-- [ ] T029 Persist repeat-failure aggregates to `metrics_repeat_failures` during ingest (including backfill logic) in `src/catalog/ingest.py`
-- [ ] T030 Add integration test `tests/integration/test_metrics_repeat_failures.py` to validate repeat-failure counts, timestamps, and redaction
+- [x] T004 Populate normalized tables (`requests`, `request_parts`, `tool_outputs`) in `src/catalog/ingest.py`
+- [x] T005 [P] Regenerate `schema_manifest.json` + `README_CopilotChatHistory.md` with new schema metadata in `src/catalog/ingest.py`
+- [x] T006 [P] Add catalog query helpers (`fetch_session_documents`, `fetch_tool_results`) in `src/catalog/__init__.py`
+- [x] T007 Create ingestion integration test validating tables and manifest outputs in `tests/integration/test_catalog_ingest.py`
+- [x] T026 [P] Enforce workspace-scoped storage and configurable redaction toggles in `src/catalog/ingest.py` with audit logging saved to `AI-Agent-Workspace/_temp/ingest_audit.json`
+- [x] T027 Add regression check `tests/regression/test_redaction_guardrails.py` that simulates secrets in telemetry and asserts no export/recall surface raw values
+- [x] T029 Persist repeat-failure aggregates to `metrics_repeat_failures` during ingest (including backfill logic) in `src/catalog/ingest.py`
+- [x] T030 Add integration test `tests/integration/test_metrics_repeat_failures.py` to validate repeat-failure counts, timestamps, and redaction
 
 ---
 
@@ -49,10 +49,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Enrich TF-IDF documents with tool outcomes, timestamps, and session metadata in `src/recall/conversation_recall.py`
-- [ ] T009 [US1] Add CLI filters, cache key computation, and provenance formatting in `src/recall/conversation_recall.py`
-- [ ] T010 [P] [US1] Author top-k recall regression test in `tests/regression/test_conversation_recall.py`
-- [ ] T011 [P] [US1] Implement latency measurement harness in `tests/regression/test_recall_latency.py`
+- [x] T008 [US1] Enrich TF-IDF documents with tool outcomes, timestamps, and session metadata in `src/recall/conversation_recall.py`
+- [x] T009 [US1] Add CLI filters, cache key computation, and provenance formatting in `src/recall/conversation_recall.py`
+- [x] T010 [P] [US1] Author top-k recall regression test in `tests/regression/test_conversation_recall.py`
+- [x] T011 [P] [US1] Implement latency measurement harness in `tests/regression/test_recall_latency.py`
 
 **Checkpoint**: Recall CLI returns actionable snippets (with provenance) inside ≤2 seconds after warm cache.
 

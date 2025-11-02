@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import re
 
-from .actions import render_actions
+from .actions import RenderedActions, render_actions
 from .response_parser import inject_actions_into_request
 from .utils import format_uri, prune_keys
 
@@ -331,8 +331,9 @@ def render_followups(request: Dict[str, Any]) -> List[str]:
 def _normalize_for_fingerprint(text: str) -> str:
     # Lowercase and normalize common variable parts (paths, URIs, UUIDs/hex, numbers)
     s = text.lower()
-    # Remove seen markers if present
-    s = re.sub(r"\s+—\s+seen before \(\d+×\)$", "", s)
+    # Remove seen markers if present (even when followed by cross-session context)
+    s = re.sub(r"\s+—\s+seen before \(\d+×\)", "", s)
+    s = re.sub(r"\s+—\s+seen across \d+ sessions \(\d+× total\)", "", s)
     # Normalize file URIs
     s = re.sub(r"file:\/\/[^\s)]+", "<uri>", s)
     # Normalize windows/unix paths
@@ -507,35 +508,24 @@ def render_turn(
             if thinking:
                 lines.extend(["", thinking])
 
-            action_lines = render_actions(metadata_clean.get("messages") or [], include_raw=include_raw_actions)
+            rendered_actions: RenderedActions = render_actions(
+                metadata_clean.get("messages") or [], include_raw=include_raw_actions
+            )
+            action_lines = rendered_actions.lines
             if action_lines and _seen_state is not None and not include_raw_actions:
                 action_lines = _annotate_seen(action_lines, _seen_state, _cross_stats)
             if action_lines:
-                # Turn-level action summary (counts by title)
-                try:
-                    blocks = _segment_action_blocks(action_lines)
-                    title_re = re.compile(r"^\*\*(?P<title>[^*]+)\*\*")
-                    counts: Dict[str, int] = {}
-                    for start, _ in blocks:
-                        m = title_re.match(action_lines[start])
-                        if m:
-                            title = m.group("title").strip()
-                            if title:
-                                counts[title] = counts.get(title, 0) + 1
-                    if counts:
-                        ordered = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
-                        summary_bits = [f"{k} {v}" for k, v in ordered]
-                        # Optionally append status marker for turn
-                        if _status_label and _status_label not in {"OK", ""}:
-                            summary_bits.append(f"Status: {_status_label}")
-                        lines.extend(["", f"> _Actions this turn_: " + " · ".join(summary_bits)])
-                except Exception:
-                    pass
+                counts = rendered_actions.counts
+                if counts:
+                    ordered = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+                    summary_bits = [f"{k} {v}" for k, v in ordered]
+                    if _status_label and _status_label not in {"OK", ""}:
+                        summary_bits.append(f"Status: {_status_label}")
+                    lines.extend(["", f"> _Actions this turn_: " + " · ".join(summary_bits)])
 
-                # Insert status marker inside Actions when canceled/terminated
                 lines.extend(["", "#### Actions", ""])
                 if _status_label in {"Canceled", "Terminated"}:
-                    lines.extend([f"_Status: {_status_label}_", ""])  # visual hint within Actions block
+                    lines.extend([f"_Status: {_status_label}_", ""])
                 lines.extend(action_lines)
 
             tool_lines = render_tool_invocations(metadata_clean)

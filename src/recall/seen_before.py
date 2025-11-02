@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple
 
+_TOKEN_RE = re.compile(r"[a-zA-Z0-9_`./:-]+")
 ACTIONS_TITLE = re.compile(r"^\*\*[^*]+\*\*\s+—\s+.*$")
 SEEN_SUFFIX = re.compile(r"\s+—\s+seen before \(\d+×\)$", re.IGNORECASE)
 
@@ -19,6 +20,10 @@ def normalize(text: str) -> str:
     t = re.sub(r"\d+", "#", t)
     t = re.sub(r"\s+", " ", t)
     return t
+
+
+def tokens(text: str) -> set[str]:
+    return set(_TOKEN_RE.findall(normalize(text)))
 
 
 def iter_action_title_lines(markdown: str) -> Iterable[str]:
@@ -66,9 +71,6 @@ def main() -> None:
     exact = where.get(q_fp, [])
 
     # Fuzzy: Jaccard over token sets for near matches
-    def tokens(s: str) -> set:
-        return set(re.findall(r"[a-zA-Z0-9_`./:-]+", normalize(s)))
-
     q_tok = tokens(args.query)
     scored: List[Tuple[float, str]] = []
     for fp, items in where.items():

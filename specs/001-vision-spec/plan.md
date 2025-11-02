@@ -24,8 +24,9 @@ with Python 3.9+ for portability
 **Storage**: SQLite catalog at `.vscode/CopilotChatHistory/copilot_chat_logs.db`
 with companion `schema_manifest.json` and `README_CopilotChatHistory.md`  
 **Testing**: `pytest` suites for ingestion/export/recall, golden markdown fixtures,
-recall latency harness with cached TF-IDF indices, migration smoke tests, and
-module-adjacent unit tests stored alongside source files (e.g., `src/export/tests/`)  
+recall latency harness with cached TF-IDF indices, migration smoke tests, and a
+centralized test tree (`tests/unit`, `tests/integration`, `tests/regression`) that
+shares fixtures through `tests/conftest.py`
 **Target Platform**: Windows 10/PowerShell 5.1 and Ubuntu-based devcontainers
 (bash/zsh); CLI wrappers must document both shells per constitution principle V  
 **Project Type**: Single-project CLI + library toolkit rooted in `src/` with helper
@@ -79,23 +80,17 @@ specs/001-vision-spec/
 src/
 ├── catalog/
 │   ├── ingest.py
-│   ├── __init__.py
-│   └── tests/
-│       └── test_*.py
+│   └── __init__.py
 ├── export/
 │   ├── cli.py
 │   ├── markdown.py
 │   ├── patterns.py
 │   ├── response_parser.py
-│   ├── utils.py
-│   └── tests/
-│       └── test_*.py
+│   └── utils.py
 ├── recall/
 │   ├── conversation_recall.py
 │   ├── seen_before.py
-│   ├── summarize_exports.py
-│   └── tests/
-│       └── test_*.py
+│   └── summarize_exports.py
 └── chat_logs_to_sqlite.py
 
 AI-Agent-Workspace/
@@ -103,14 +98,18 @@ AI-Agent-Workspace/
 └── Project-Chat-History/
 
 tests/
+├── helpers/
+├── unit/
 ├── integration/
 └── regression/
 ```
 
-**Structure Decision**: Retain the single-project Python layout. Unit tests live
-adjacent to their modules under `src/**/tests/`, while cross-module integration
-and regression suites remain in `tests/`. CLI entry-points stay under `src/` with
-PowerShell and POSIX usage documented (and parity-checked) in the quickstart.
+**Structure Decision**: Retain the single-project Python layout while
+deduplicating fixtures through a centralized `tests/` hierarchy. Unit tests live
+under `tests/unit/`, integration checks under `tests/integration/`, and
+regression suites under `tests/regression/`. CLI entry-points stay under `src/`
+with PowerShell and POSIX usage documented (and parity-checked) in the
+quickstart.
 
 ## Failure Modes & External Dependencies
 

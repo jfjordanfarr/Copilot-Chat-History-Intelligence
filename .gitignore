@@ -8,3 +8,20 @@ AI-Agent-Workspace/live_chat.db
 
 # Python caches
 __pycache__/
+*.py[cod]
+.pyo
+.pytest_cache/
+.coverage
+coverage/
+
+# Environment files
+.env
+.env.*
+.python-version
+
+# Virtual environments & builds
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
