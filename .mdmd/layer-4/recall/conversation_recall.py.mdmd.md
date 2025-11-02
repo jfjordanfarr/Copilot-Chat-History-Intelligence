@@ -1,50 +1,57 @@
 # Layer 4 — src/recall/conversation_recall.py
 
-Implementation
-- File: [src/recall/conversation_recall.py](../../../src/recall/conversation_recall.py)
+## Metadata
+- Layer: 4
+- Implementation ID: IMP-010
+- Code Path: [src/recall/conversation_recall.py](../../../src/recall/conversation_recall.py)
+- Exports: `main`, `build_argument_parser`, `query_catalog`, `load_documents`, `Document`
 
-What it does
-- Fast, local "Have I done this before?" search over the SQLite catalog using TF‑IDF with on‑disk caching.
+## Purpose
+- Serve fast, provenance-rich answers to "Have I done this before?" by scanning the normalized catalog with TF-IDF.
+- Provide a cache-aware CLI that stays Windows-first while remaining portable to POSIX shells.
+- Capture repeat-failure telemetry context (command, exit code, snippets) to reinforce SC-004 remediation work.
 
-Why it exists
-- **Core mission fulfillment**: Directly answers "Have I encountered this before?" query that motivated the entire project.
-- **Performance via caching**: First run takes 1+ minute on high-end hardware; caching makes subsequent queries sub-second.
-- **Cross-workspace recall**: Searches all historical conversations across every workspace on the machine.
-- **MCP foundation**: Terminal-executable script designed to become MCP tool/server for high-agency AI behaviors.
+## Public Symbols
 
-Public surface
-- CLI: python -m recall.conversation_recall "<query>" [--limit N] [--agent ID] [--session ID ...] [--db path] [--cache-dir dir] [--no-cache]
+### main(argv: Optional[Sequence[str]] = None) -> int
+- Entry point for `python -m recall.conversation_recall` and helper scripts.
+- Validates catalog presence, dispatches `query_catalog`, formats results, and optionally prints latency via `--print-latency`.
+- Honors cache toggles (`--cache-dir`, `--no-cache`) and filters (`--agent`, `--session`, `--workspace`).
 
-Core types
-- Document { doc_id, prompt_id, session_id?, agent_id?, label, text, tags }
+### build_argument_parser() -> argparse.ArgumentParser
+- Defines CLI arguments shared across Windows and POSIX docs, ensuring PowerShell-friendly defaults.
+- Keeps the help text synchronized with quickstart commands and regression parity tests.
 
-Key functions
-- load_documents(db_path, limit_sessions?, agent_filter?) -> List[Document]
-  - Scans prompts; for each response log, builds a "turn" doc (rendered user + summary), per-round docs, and per-tool docs with tool/status tags.
-- build_tfidf_index(docs) -> (doc_vectors, norms, df, total_docs): term frequency, IDF, and vector norms.
-- search(docs, vectors, norms, df, total_docs, query, limit) -> top matches by cosine similarity.
-- Cache helpers: compute_cache_key, cache_directory, cache_path_for_key, load_cached_payload, store_cache.
+### query_catalog(query, *, db_path, limit, agent=None, sessions=None, workspaces=None, cache_dir=None, workspace_root=None, use_cache=True) -> Tuple[List[Tuple[float, Document]], float]
+- Loads (or reuses cached) TF-IDF vectors, executes cosine similarity search, and returns scored documents plus latency.
+- Computes cache keys from catalog path, mtime, size, and filters so sandbox migrations produce distinct cache entries.
 
-Inputs
-- SQLite DB at `AI-Agent-Workspace/live_chat.db` (default), produced by the ingestor.
+### load_documents(db_path, *, sessions=None, agent=None, workspaces=None) -> List[Document]
+- Hydrates `Document` dataclasses from catalog rows while enriching tool outcomes via `catalog.fetch_tool_results`.
+- Normalizes command text, exit codes, prompts, responses, and tool snippets into a search-ready string.
 
-Outputs
-- Prints sorted matches with score, session id, doc id, tool/status tags when present, and a trimmed snippet.
+### Document
+- Dataclass capturing request/session metadata, workspace fingerprint, cached timestamp, tool summaries, and formatted text for indexing.
 
-Behavior
-- Tokenizes with a simple word regex; builds normalized vectors; caches the full index under `.cache/conversation_recall/` near the DB (or an override directory).
-- Cache key includes DB path, mtime, size, agent filter, and session filters; versioned via CACHE_VERSION.
+## Collaborators
+- [catalog.fetch_tool_results](../../../src/catalog/__init__.py) — collects per-request tool metadata for enrichment.
+- [tests/regression/test_conversation_recall.py](../../../tests/regression/test_conversation_recall.py) — guards recall accuracy.
+- [tests/regression/test_recall_latency.py](../../../tests/regression/test_recall_latency.py) — enforces latency budget and cache behavior.
+- [AI-Agent-Workspace/Workspace-Helper-Scripts/migrate_sandbox.py](../../../AI-Agent-Workspace/Workspace-Helper-Scripts/migrate_sandbox.py) — exercises recall inside migration sandboxes and records telemetry in summaries.
 
-Edge cases
-- Empty catalog or no documents → exits with a message.
-- Large catalogs → first run heavy; subsequent runs fast via cache.
+## Linked Components
+- [Layer 3 — Architecture & Solution Components](../../layer-3/architecture.mdmd.md#key-components) (see “Recall & analysis”).
+- [Layer 2 — Requirements](../../layer-2/requirements.mdmd.md#r005--recall-tooling).
 
-Contracts
-- Does not mutate the catalog; purely read-only search.
+## Evidence
+- Regression: [tests/regression/test_conversation_recall.py](../../../tests/regression/test_conversation_recall.py).
+- Latency harness: [tests/regression/test_recall_latency.py](../../../tests/regression/test_recall_latency.py).
+- Migration parity: [tests/regression/test_migration_sandbox.py](../../../tests/regression/test_migration_sandbox.py) (recall invoked during sandbox dry runs).
+- CLI parity: [tests/regression/test_cli_parity.py](../../../tests/regression/test_cli_parity.py) validates Windows/POSIX help entry consistency.
 
-Extensibility
-- Can be swapped for or augmented with embeddings later; current shape supports quick local recall.
+## Observability
+- Cache directory defaults to `AI-Agent-Workspace/.cache/conversation_recall`; configurable via `--cache-dir` and `--workspace-root` for sandbox runs.
+- `--print-latency` surfaces query duration to stdout for SC-001 verification and migration summaries.
 
-Backlinks
-- Architecture: ../../layer-3/architecture.mdmd.md
-- Requirements: ../../layer-2/requirements.mdmd.md#R005
+## Follow-up
+- Future embedding-backed search can reuse `Document` preparation and cache orchestration while swapping vectorization.

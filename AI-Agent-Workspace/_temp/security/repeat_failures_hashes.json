@@ -1,0 +1,47 @@
+{
+  "generated_at": "2025-11-02T21:08:12.675788+00:00",
+  "catalog_db": "D:\\Projects\\Copilot-Chat-History-Intelligence\\.vscode\\CopilotChatHistory\\copilot_chat_logs.db",
+  "report_path": "AI-Agent-Workspace\\_temp\\repeat_failures.json",
+  "baseline_path": "AI-Agent-Workspace\\_temp\\repeat_failures.json",
+  "digest_sha256": "cc4ca00ca694c25b8be677c1db70fde55b008f2c781a38cd6287c57780e85ebe",
+  "summary": {
+    "total_occurrences": 123,
+    "unique_failures": 114,
+    "top_exit_codes": [
+      {
+        "exit_code": 1,
+        "occurrence_count": 49
+      },
+      {
+        "exit_code": 3,
+        "occurrence_count": 41
+      },
+      {
+        "exit_code": 9,
+        "occurrence_count": 11
+      }
+    ],
+    "window": {
+      "earliest": "2025-10-24T03:50:11.049000+00:00",
+      "latest": "2025-11-02T14:43:07.018000+00:00"
+    },
+    "workspace_fingerprints": [
+      "5a70ddd9b8cd03e5"
+    ]
+  },
+  "delta_overview": {
+    "new": 114,
+    "regressed": 0,
+    "improved": 0,
+    "resolved": 114
+  },
+  "audit": {
+    "requests_ingested": 500,
+    "secrets_redacted": 761774
+  },
+  "workspace_filters": [
+    "5a70ddd9b8cd03e5"
+  ],
+  "report_sha256": "7c071a85312e9f3ee7b2d0fb8953e5ef1d5edf3bd54c5a2e6e363c09962ed749",
+  "baseline_sha256": "7c071a85312e9f3ee7b2d0fb8953e5ef1d5edf3bd54c5a2e6e363c09962ed749"
+}

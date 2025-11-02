@@ -90,8 +90,8 @@ def run_validate_census(tmp_path: Path, census_body: str, transcript_lines: int)
 
 def test_validate_census_passes_with_sequential_chunks(tmp_path):
     census_body = """
-#### Lines 1-1200 — Segment A
-#### Lines 1201-2400 — Segment B
+#### [transcript] Lines 1-1200 — Segment A
+#### [transcript] Lines 1201-2400 — Segment B
 """.strip()
     result = run_validate_census(tmp_path, census_body, transcript_lines=2400)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -99,8 +99,8 @@ def test_validate_census_passes_with_sequential_chunks(tmp_path):
 
 def test_validate_census_flags_excess_gap(tmp_path):
     census_body = """
-#### Lines 1-1000 — Segment A
-#### Lines 2301-2400 — Segment C
+#### [transcript] Lines 1-1000 — Segment A
+#### [transcript] Lines 2301-2400 — Segment C
 """.strip()
     result = run_validate_census(tmp_path, census_body, transcript_lines=2400)
     assert result.returncode != 0

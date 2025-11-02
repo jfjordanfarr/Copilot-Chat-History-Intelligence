@@ -1,6 +1,6 @@
 ﻿# Copilot Instructions
 
-Last updated: 2025-10-22
+Last updated: 2025-11-02
 
 ## Behavior Expectations
 
@@ -33,6 +33,48 @@ Key capabilities we are pursuing:
 - When invoking Python, lean on helper scripts (checked into the repo) or single-line `python -c` commands that avoid complex quoting.
 - Capture terminal metadata (CWD, exit codes, stderr tails) whenever tooling records command output so exporters can surface warning/failure context.
 - Document alternate invocation examples for non-PowerShell shells inside README snippets when introducing new CLI entry points.
+- Regression tests enforce CLI parity (`tests/regression/test_cli_parity.py`), so keep the documented commands compatible across PowerShell, cmd, and POSIX shells.
+
+## Automation Entry Points
+
+- **Catalog ingest**: `python -m catalog.ingest --reset` with optional session path argument. Always run inside an activated virtual environment to reuse dependencies.
+- **Exports**: `python -m export.cli --database .vscode/CopilotChatHistory/copilot_chat_logs.db --all --include-status --workspace-directories --output AI-Agent-Workspace/_temp/exports`.
+- **Recall**: `python -m recall.conversation_recall "<query>" --print-latency` for quick provenance-rich answers; rely on `--workspace` filters when multiple repos share a catalog.
+- **Migration sandbox**:
+	- PowerShell:
+		```powershell
+		python AI-Agent-Workspace/Workspace-Helper-Scripts/migrate_sandbox.py `
+					--sandbox-dir AI-Agent-Workspace/_temp/migration_sandbox `
+					--summary AI-Agent-Workspace/_temp/migration_summary.json `
+					--repeat-failures-output AI-Agent-Workspace/_temp/repeat_failures.json `
+					--repeat-failures-baseline AI-Agent-Workspace/_temp/repeat_failures.json
+		```
+	- POSIX:
+		```bash
+		python AI-Agent-Workspace/Workspace-Helper-Scripts/migrate_sandbox.py \
+					 --sandbox-dir AI-Agent-Workspace/_temp/migration_sandbox \
+					 --summary AI-Agent-Workspace/_temp/migration_summary.json \
+					 --repeat-failures-output AI-Agent-Workspace/_temp/repeat_failures.json \
+					 --repeat-failures-baseline AI-Agent-Workspace/_temp/repeat_failures.json
+		```
+	- Omit `--sessions` to reuse the last ingest audit hint, and add `--keep` when diffing exports between runs.
+- **Repeat-failure telemetry (SC-004)**:
+	- Capture baseline + deltas and emit a security manifest:
+		```powershell
+		python AI-Agent-Workspace/Workspace-Helper-Scripts/measure_repeat_failures.py `
+					--db .vscode/CopilotChatHistory/copilot_chat_logs.db `
+					--output AI-Agent-Workspace/_temp/repeat_failures.json `
+					--baseline AI-Agent-Workspace/_temp/repeat_failures.json `
+					--security-report AI-Agent-Workspace/_temp/security/repeat_failures_hashes.json
+		```
+	- The helper scopes results to the active workspace fingerprint by default; add `--workspace <path-or-fingerprint>` (repeatable) or `--all-workspaces` when you need cross-repo telemetry.
+- **Census validation**: `python AI-Agent-Workspace/Workspace-Helper-Scripts/validate_census.py --summary AI-Agent-Workspace/_temp/census_validation.json` keeps 1200-line cadence in check.
+
+## Telemetry & Security Notes
+
+- Keep `AI-Agent-Workspace/_temp/security/` under version control for manifests only—never raw transcripts. Hashes written by `measure_repeat_failures.py --security-report` must include the catalog DB path, audit redaction counts, and delta summary for SC-004 evidence.
+- Migration summaries should reference the repeat-failure manifest plus `_temp/census_validation.json`; cite those artefacts when closing checklist items.
+- Record any opt-in adapters or external endpoints inside this file before enabling them so future agents inherit the consent audit trail.
 
 ## Documentation Conventions
 

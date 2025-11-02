@@ -1,66 +1,54 @@
 # Layer 4 — src/export/markdown.py
 
-Implementation
-- File: [src/export/markdown.py](../../../src/export/markdown.py)
+## Metadata
+- Layer: 4
+- Implementation ID: IMP-011
+- Code Path: [src/export/markdown.py](../../../src/export/markdown.py)
+- Exports: `render_session_markdown`, `_render_lod0_transcript`, `render_turn`, `_collapse_structured_blocks`
 
-What it does
-- Builds either the full transcript (USER/Copilot text, Actions, per‑turn counts, session Actions summary, Motifs) or the new LOD‑0 Copy-All surrogate (messages only, with fenced/triple-quoted blocks collapsed to `...`).
+## Purpose
+- Reconstruct VS Code chat transcripts with UI-faithful Actions, status badges, motif annotations, and LOD variants ready for audits.
+- Surface repeat patterns (“Seen before/Seen across”) and per-turn action counts that inform migration and recall decisions.
+- Provide a Copy-All surrogate (LOD-0) that trims fenced payloads for cheap storage while preserving actionable context.
 
-Why it exists
-- **UI parity with enhancements**: Matches what appears in VS Code chat UI while adding tool call context missing from Copy-All.
-- **Motif detection**: Within-session fingerprinting reveals repeated tool patterns that indicate inefficiency or bugs.
-- **Action summarization**: Per-turn and session-level counts provide quick overview of development activity.
-- **Status integration**: Preserves tool failure/cancellation information for learning from mistakes.
+## Public Symbols
 
-Public surface
-- render_session_markdown(session: dict, *, include_status: bool, include_raw_actions: bool = False, cross_session_dir: Optional[Path] = None, lod_level: Optional[int] = None) -> str
+### render_session_markdown(session, *, include_status, include_raw_actions=False, cross_session_dir=None, lod_level=None) -> str
+- Primary entry used by `export.cli` and migration smoke tests.
+- Emits headers, per-turn blocks, Actions summaries, motif sections, and optional LOD-0 transcript based on parameters.
+- Coordinates action rendering, motif fingerprinting, and status inclusion.
 
-- _render_lod0_transcript(session) → Copy-All style transcript with collapsed blocks
-- render_turn(request, *, include_status, include_raw_actions, _seen_state)
-- render_actions(metadata.messages, include_raw)
-- render_message_text, render_response_content, render_tool_invocations, render_followups
-- _collapse_structured_blocks(text) → squashes fenced/triple-quoted blocks to `...`
-- _normalize_for_fingerprint(text) -> str; _segment_action_blocks(lines) -> List[(start,end)]
-- _annotate_seen(lines, seen_map) → appends “— Seen before (Nx)” to block title lines
-- ms_to_iso(timestamp_ms) → ISO8601 UTC string
+### _render_lod0_transcript(session) -> str
+- Generates Copy-All style output that collapses fenced/triple-quoted payloads to `...` while preserving turn order.
+- Ensures exporters stay within the ±2× Copy-All length constraint for large sessions.
 
-Inputs
-- session: { sessionId, creationDate, lastMessageDate, requests[] }
-- requests[]: { message, timestamp, contentReferences, response, result:{ metadata:{ messages[] } }, followups }
+### render_turn(request, *, include_status, include_raw_actions, seen_state) -> str
+- Builds the per-turn section (USER, Copilot, Actions, tool invocations, follow-ups).
+- Annotates repeats via `seen_state` and threads status lines when failures or cancellations occur.
 
-Outputs
-- Markdown string with:
-  - Header (session meta)
-  - Per‑turn sections with USER, Copilot, optional thinking, Actions block, tool invocations, status
-  - Per‑turn “Actions this turn” summary (counts by title)
-  - Session‑level “Actions summary” and “Motifs (repeats)” (when not include_raw_actions)
+### _collapse_structured_blocks(text: str) -> str
+- Shared helper for LOD-0 transcripts that replaces bulky fenced blocks while signaling truncated content.
 
-Behavior
-- lod_level=0: emit Copy-All style transcript, preserving message order while replacing fenced/triple-quoted payloads with `...` to minimize tokens.
-- Injects actions into a request via response_parser when sessions serialize tool JSON in response text (not metadata).
-- Builds compact Actions using actions.render_actions, then computes:
-  - Per‑turn counts via block titles
-  - A session‑level aggregation of action titles
-  - Motif detection via fingerprint of block text (normalized: lowercase; mask paths/URIs/UUIDs; collapse numbers; whitespace squeeze)
-- Seen‑before: maintains a session‑scoped fingerprint→count; annotates repeats on the first line of each block.
-- Status lines: if include_status and result.errorDetails present, appends “> _Status_: …”.
+## Collaborators
+- [src/export/actions.py](../../../src/export/actions.py) — converts raw tool metadata into compact Actions blocks.
+- [src/export/patterns.py](../../../src/export/patterns.py) — formats terminal, diff, and read/search motifs consistently.
+- [src/export/response_parser.py](../../../src/export/response_parser.py) — rescues embedded tool JSON when metadata is missing.
+- [src/export/utils.py](../../../src/export/utils.py) — path normalization, Markdown escaping, timestamp formatting.
+- [AI-Agent-Workspace/Workspace-Helper-Scripts/seen_before.py](../../../AI-Agent-Workspace/Workspace-Helper-Scripts/seen_before.py) — shares motif fingerprinting rules for cross-session recall.
 
-Edge cases
-- LOD-0 gracefully skips empty messages; falls back to full export when no usable turns remain.
-- Missing/empty messages: Actions block omitted gracefully.
-- include_raw_actions=True: emits raw JSON payloads within blocks; suppresses summaries/motifs for readability.
-- Reference rendering: formats URIs with line ranges, variables with values, and plain labels when available.
+## Linked Components
+- [Layer 3 — Architecture & Solution Components](../../layer-3/architecture.mdmd.md#key-components) (see “Exporter”).
+- [Layer 2 — Requirements](../../layer-2/requirements.mdmd.md#r002--markdown-export-ui-parity--signal) and [R004](../../layer-2/requirements.mdmd.md#r004--repeat-detection--lod-cues).
 
-Error modes
-- Defensive JSON handling; treats unknown response shapes as text (render_response_content) and prunes sensitive keys.
+## Evidence
+- Golden export: [tests/integration/test_export_markdown.py](../../../tests/integration/test_export_markdown.py).
+- Action rendering: [tests/unit/test_export_actions.py](../../../tests/unit/test_export_actions.py).
+- Pattern formatting: [tests/unit/test_export_patterns.py](../../../tests/unit/test_export_patterns.py).
+- Migration parity: [tests/regression/test_migration_sandbox.py](../../../tests/regression/test_migration_sandbox.py) (verifies exports regenerate during sandbox runs).
 
-Success criteria
-- Text mirrors UI; Actions contain concise blocks; per‑turn counts and session summaries appear when data present; motif annotations applied deterministically.
+## Observability
+- Export paths recorded in migration summaries via `migrate_sandbox.py`, enabling checksum comparison during relocations.
+- Supports `include_raw_actions` debug mode for forensic runs without affecting standard audits.
 
-Links
-- Uses: export.actions, export.response_parser, export.patterns, export.utils
-- Upstream CLI: src/export/cli.py
-
-Backlinks
-- Architecture: ../../layer-3/architecture.mdmd.md
-- Requirements: ../../layer-2/requirements.mdmd.md#R002, ../../layer-2/requirements.mdmd.md#R004
+## Follow-up
+- Future LOD briefs can reuse motif fingerprints to summarize long sessions without generating full transcripts.

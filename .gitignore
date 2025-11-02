@@ -1,5 +1,8 @@
 # Local workspace artefacts
-AI-Agent-Workspace/_temp/
+AI-Agent-Workspace/_temp/*
+!AI-Agent-Workspace/_temp/security/
+AI-Agent-Workspace/_temp/security/*
+!AI-Agent-Workspace/_temp/security/*.json
 AI-Agent-Workspace/live_chat.db
 .link-aware-diagnostics/
 

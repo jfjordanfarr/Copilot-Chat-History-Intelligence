@@ -84,10 +84,10 @@
 
 ### Implementation for User Story 3
 
-- [ ] T017 [P] [US3] Automate migration sandbox flow in `AI-Agent-Workspace/Workspace-Helper-Scripts/migrate_sandbox.py`
-- [ ] T018 [US3] Publish migration checklist with evidence slots in `specs/001-vision-spec/checklists/migration.md`
-- [ ] T019 [P] [US3] Validate sandbox behavior via `tests/regression/test_migration_sandbox.py`
-- [ ] T020 [US3] Implement census checkpoint validator in `AI-Agent-Workspace/Workspace-Helper-Scripts/validate_census.py`
+- [x] T017 [P] [US3] Automate migration sandbox flow in `AI-Agent-Workspace/Workspace-Helper-Scripts/migrate_sandbox.py`
+- [x] T018 [US3] Publish migration checklist with evidence slots in `specs/001-vision-spec/checklists/migration.md`
+- [x] T019 [P] [US3] Validate sandbox behavior via `tests/regression/test_migration_sandbox.py`
+- [x] T020 [US3] Implement census checkpoint validator in `AI-Agent-Workspace/Workspace-Helper-Scripts/validate_census.py`
 
 **Checkpoint**: Migration dry run reproduces catalog, exports, instructions, and census without manual intervention.
 
@@ -97,12 +97,12 @@
 
 **Purpose**: Align documentation and instructions with the implemented behavior while capturing telemetry for SC-004, validating CLI parity across shells, and preserving privacy/security evidence.
 
-- [ ] T021 [P] Update `.mdmd/layer-4/recall/conversation_recall.py.mdmd.md` with new CLI options, caching, and regression evidence
-- [ ] T022 [P] Update `.mdmd/layer-4/exporter/markdown.py.mdmd.md` to describe Actions summary, motif integration, and LOD-0 rendering
-- [ ] T023 Refresh `.github/copilot-instructions.md` to reference new scripts, guardrails, and validation flows
-- [ ] T024 [P] Capture repeat-failure telemetry baseline and post-rollout metrics in `AI-Agent-Workspace/Workspace-Helper-Scripts/measure_repeat_failures.py` (feeds SC-004)
-- [ ] T025 Validate Windows vs POSIX CLI parity via `tests/regression/test_cli_parity.py` using quickstart commands and helper scripts
-- [ ] T028 Publish privacy/security audit notes (workspace boundary, consented adapters) in `specs/001-vision-spec/checklists/requirements.md` and archive evidence hashes under `AI-Agent-Workspace/_temp/security`
+- [x] T021 [P] Update `.mdmd/layer-4/recall/conversation_recall.py.mdmd.md` with new CLI options, caching, and regression evidence
+- [x] T022 [P] Update `.mdmd/layer-4/exporter/markdown.py.mdmd.md` to describe Actions summary, motif integration, and LOD-0 rendering
+- [x] T023 Refresh `.github/copilot-instructions.md` to reference new scripts, guardrails, and validation flows
+- [x] T024 [P] Capture repeat-failure telemetry baseline and post-rollout metrics in `AI-Agent-Workspace/Workspace-Helper-Scripts/measure_repeat_failures.py` (feeds SC-004)
+- [x] T025 Validate Windows vs POSIX CLI parity via `tests/regression/test_cli_parity.py` using quickstart commands and helper scripts
+- [x] T028 Publish privacy/security audit notes (workspace boundary, consented adapters) in `specs/001-vision-spec/checklists/requirements.md` and archive evidence hashes under `AI-Agent-Workspace/_temp/security`
 
 ---
 

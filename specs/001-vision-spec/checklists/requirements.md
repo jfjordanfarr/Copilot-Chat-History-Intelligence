@@ -39,12 +39,12 @@
 
 ## Migration & Platform Readiness
 
-- [ ] CHK-013 Execute the migration checklist in a sandbox, verifying catalog, exports, instructions, and census replicate without manual tweaks and produce checksum/line-count parity (FR-006, SC-003).
-	> Evidence status: Pending dry-run migration into scratch workspace.
+- [x] CHK-013 Execute the migration checklist in a sandbox, verifying catalog, exports, instructions, and census replicate without manual tweaks and produce checksum/line-count parity (FR-006, SC-003).
+	> Evidence: `_temp/migration_summary.json` (2025-11-02T19:47Z) logs ingest/export success, recall query results, and repeat-failure telemetry for sandbox fingerprint `5a70ddd9b8cd03e5`; paired `_temp/census_validation.json` lists zero gaps and per-transcript SHA-1 hashes.
 - [ ] CHK-014 Document recovery steps for migrating between machines or VS Code profiles, including handling different telemetry paths and reverse-migration scenarios (FR-006).
 	> Evidence status: New migration quickstart in `.github/copilot-instructions.md`; expand with telemetry path matrix.
-- [ ] CHK-015 Provide Windows-first CLI entry points (single command) for recall/export/migration plus documented alternatives for non-PowerShell shells; confirm they bypass execution-policy blockers (FR-007).
-	> Evidence status: CLI docs pending; note execution-policy bypass approach in future README update.
+- [x] CHK-015 Provide Windows-first CLI entry points (single command) for recall/export/migration plus documented alternatives for non-PowerShell shells; confirm they bypass execution-policy blockers (FR-007).
+	> Evidence: `.github/copilot-instructions.md` “Automation Entry Points” (2025-11-02) captures PowerShell + POSIX invocations for ingest, export, recall, migration, census, and repeat-failure scripts; `tests/regression/test_cli_parity.py` enforces help text parity across shells.
 - [ ] CHK-016 Track repeated-tool-failure metrics after rollout and confirm ≥60% reduction within one week, updating documentation with measurement method (SC-004).
 	> Evidence status: Pending exporter metric capture once recall tooling live.
 - [ ] CHK-017 Validate autosummarization never leaves more than 1200 uncatalogued lines and that checkpoints are replayable within 15 minutes (SC-005).
@@ -58,3 +58,10 @@
 	> Evidence: Census refreshed 2025-11-01 with line-ranged block quotes across dev days; spec Traceability references `.mdmd/user-intent-census.md` as intent ledger.
 - [x] CHK-020 Verify `.github/copilot-instructions.md` captures the PowerShell-first conventions and migration guidance reflected in the spec so future agents inherit the same guardrails (FR-007).
 	> Evidence: New "Windows & Shell Guardrails" and "Migration Quickstart" sections document PowerShell practices and migration steps consistent with FR-007/FR-006.
+
+## Security & Governance
+
+- [x] CHK-021 Document workspace-bound telemetry adapters and consent notes so future agents inherit privacy guardrails (FR-008).
+	> Evidence: `.github/copilot-instructions.md` (2025-11-02) now records default shell expectations, external adapter policy, and repeat-failure telemetry workflow.
+- [x] CHK-022 Archive repeat-failure security manifest with hashes under `AI-Agent-Workspace/_temp/security/` for SC-004 audits.
+	> Evidence: `AI-Agent-Workspace/_temp/security/repeat_failures_hashes.json` generated 2025-11-02T20:18:14Z captures catalog path, audit totals, delta overview, and SHA-256 digests for `_temp/repeat_failures.json`.
