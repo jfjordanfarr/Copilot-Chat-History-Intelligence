@@ -47,5 +47,8 @@ Roadmap sketch
 - M4 cross-session similarity counts, scoped filters, and warning-on-success coverage. (Pending W102/W105.)
 - M5 LOD summary generation + MCP surface for recall/search + privacy toggle + test/CI harness.
 
+Linked specification
+- [Spec-kit Feature Spec — Copilot Recall Vision](../../specs/001-vision-spec/spec.md)
+
 Next layer
 - Continue to Layer 2 (Requirements & Roadmap): ../layer-2/requirements.mdmd.md

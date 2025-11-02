@@ -1,0 +1,97 @@
+name: copilot-recall
+version: 0.1.0
+summary: >-
+  Contract describing how the Copilot recall toolkit ingests chat telemetry,
+  renders UI-faithful exports, and serves "Have I done this before?" queries.
+owner: copilot-agent
+references:
+  specification: ../spec.md
+  plan: ../plan.md
+  quickstart: ../quickstart.md
+requirements:
+  - id: fr-001
+    description: Normalize Copilot chat logs into SQLite with provenance
+  - id: fr-002
+    description: Produce exports that mirror the VS Code chat UI with status cues
+  - id: fr-003
+    description: Answer recall queries with provenance in ≤2 seconds post warm-up
+  - id: fr-004
+    description: Surface similarity motifs and LOD-0 exports without false positives
+  - id: fr-005
+    description: Preserve the user-intent census with ≤1200 line checkpoints
+  - id: fr-006
+    description: Support migration-ready regeneration of catalog + exports
+  - id: fr-007
+    description: Provide Windows-first, portable CLI entrypoints
+lifecycle:
+  stage: planning
+  readiness_gates:
+    - quickstart.md published and referenced by plan.md
+    - contract reviewed before invoking /speckit.tasks
+    - agent context regenerated after each plan revision
+entrypoints:
+  - name: ingest
+    purpose: fr-001
+    description: Scan VS Code global storage and ingest prompts into SQLite
+    command:
+      windows: python -m catalog.ingest --db .vscode/CopilotChatHistory/copilot_chat_logs.db --output-dir .vscode/CopilotChatHistory
+      posix: python -m catalog.ingest --db .vscode/CopilotChatHistory/copilot_chat_logs.db --output-dir .vscode/CopilotChatHistory
+    inputs:
+      - name: source
+        type: filesystem
+        locations:
+          - %APPDATA%/Code/User/globalStorage/github.copilot-chat
+          - %APPDATA%/Code/User/workspaceStorage/*/chatSessions
+    outputs:
+      - path: .vscode/CopilotChatHistory/copilot_chat_logs.db
+        type: sqlite
+      - path: AI-Agent-Workspace/schema_manifest.json
+        type: manifest
+      - path: AI-Agent-Workspace/README_CopilotChatHistory.md
+        type: markdown
+    safeguards:
+      - Reset catalog with --reset only when pre-cleared with project steward
+      - Capture generated_at_utc from catalog_metadata as ingress evidence
+  - name: export
+    purpose: fr-002
+    description: Render UI-faithful Markdown for audit and migration readiness
+    command:
+      windows: python -m export.cli --database .vscode/CopilotChatHistory/copilot_chat_logs.db --session <session-id> --include-status --output AI-Agent-Workspace/Project-Chat-History/CopyAll-Paste/<session-id>.md
+      posix: python -m export.cli --database .vscode/CopilotChatHistory/copilot_chat_logs.db --session <session-id> --include-status --output AI-Agent-Workspace/Project-Chat-History/CopyAll-Paste/<session-id>.md
+    preconditions:
+      - Ingestion completed within the last 24 hours
+      - Session identifier gathered via Workspace-Helper-Scripts/list_sessions.py
+    outputs:
+      - path: AI-Agent-Workspace/Project-Chat-History/CopyAll-Paste/<session-id>.md
+        type: markdown
+      - optional: AI-Agent-Workspace/Project-Chat-History/lod0/<session-id>.md
+    safeguards:
+      - Exports remain within ±2x Copy-All length (SC-002)
+      - Redacted payloads stay redacted; confirm before sharing externally
+  - name: recall
+    purpose: fr-003
+    description: Answer "Have I done this before?" search queries against TF-IDF cache
+    command:
+      windows: python -m recall.conversation_recall "<query>" --db .vscode/CopilotChatHistory/copilot_chat_logs.db --limit 5
+      posix: python -m recall.conversation_recall "<query>" --db .vscode/CopilotChatHistory/copilot_chat_logs.db --limit 5
+    preconditions:
+      - Cache warmed after at least one run per catalog update
+    outputs:
+      - stdout: ranked snippets with session ids, tool/status annotations, cosine scores
+      - cache: AI-Agent-Workspace/.cache/conversation_recall/
+    safeguards:
+      - Purge cache directory before rerunning when catalog schema or size shifts drastically
+      - Escalate if latency exceeds 2 seconds post warm-up (breach of SC-001)
+telemetry:
+  evidence:
+    - catalog_metadata.generated_at_utc timestamp recorded per ingest
+    - export log summarizing session id, output path, byte size
+    - recall latency measurement stored in tests/regression artifacts (planned)
+  failure_modes:
+    - missing global storage directories -> emit actionable warning, abort ingest
+    - sqlite OperationalError -> surface path and retry guidance
+    - recall cache outdated -> instruct operator to delete cache file and rerun
+operational_notes:
+  - Update `.mdmd/user-intent-census.md` with new directives every ≤1200 lines
+  - Always run `.specify/scripts/powershell/update-agent-context.ps1 -AgentType copilot` after modifying plan artifacts
+  - Store migration dry-run logs in `_temp/` and reference them from MDMD layer docs

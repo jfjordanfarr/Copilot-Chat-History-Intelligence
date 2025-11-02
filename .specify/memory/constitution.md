@@ -1,50 +1,103 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+Version: 1.1.0 -> 1.2.0
+Modified Principles:
+- I. Intent-Led Planning
+- V. Environment-Aware Operational Safety (wording aligned with multi-shell guidance)
+Added Sections: None
+Removed Sections: None
+Templates requiring updates:
+- ✅ .specify/templates/spec-template.md
+- ✅ .specify/templates/plan-template.md
+- ✅ .specify/templates/tasks-template.md
+- ✅ .specify/templates/commands/plan.md
+- ✅ .specify/templates/commands/tasks.md
+- ✅ .specify/templates/commands/analyze.md
+Follow-up TODOs: None
+-->
+
+# Copilot-Chat-History-Intelligence Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Intent-Led Planning
+The user-intent census is the authoritative ledger for product scope. Specs, plans,
+and tasks MUST remain consistent with census directives and MUST update the census
+after every <=1200 lines of new conversation so autosummarization never erases
+directives. When a document diverges from or refines prior intent it MUST record
+that delta (e.g., via MDMD notes or checklist evidence). Citing census excerpts
+(with line references) is strongly encouraged whenever it clarifies scope changes,
+but is no longer mandatory if the MDMD layers already provide an explicit link.
+MDMD documents MUST remain in lock-step with census updates, linking Layer-1 vision
+to Layer-2 requirements and Layer-4 implementation guides.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Ground-Truth Telemetry
+All ingestion MUST originate from VS Code's on-disk Copilot storage; manual Copy-All
+artifacts are for validation only. Catalog runs MUST regenerate the SQLite database,
+`schema_manifest.json`, and README, preserving provenance (workspace fingerprint,
+prompt identifiers, timestamps, tool metadata). Ingestion pipelines MUST survive
+schema drift by quarantining malformed records without aborting runs.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. UI-Faithful Exports and Failure Signals
+Markdown exports MUST mirror the VS Code chat UI while staying within twice the
+Copy-All length. Every turn MUST surface Actions, status badges, diff counts,
+warning/failure tails, cancellations, and workspace filters to prevent cross-repo
+bleed. LOD-0 exports MUST collapse fenced payloads to `...` while preserving turn
+order and actionable metadata for downstream recall.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Recall and Similarity Rigor
+Recall interfaces MUST answer "Have I done this before?" within two seconds of
+catalog warm-up, returning snippets that include tool outcomes, timestamps, and
+workspace fingerprints. Similarity detection MUST flag only actionable repeats,
+document thresholds, and expose metrics that track repeated tool failures and
+similar sequences across sessions.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Environment-Aware Operational Safety
+The current workspace runs on Windows with PowerShell 5.1, but the feature set MUST
+remain portable. Commands and scripts MUST either be shell-agnostic or provide
+documented equivalents for PowerShell and at least one POSIX shell (bash/zsh). When
+PowerShell-specific flags are required, the plan MUST explain the rationale and the
+fallback for devcontainers or non-Windows hosts. Tool invocations MUST capture CWD,
+exit codes, stderr tails, and timing metadata so exporters and recall tooling can
+surface failures regardless of environment. Migration guides MUST call out any
+environment-specific prerequisites and how to reproduce them elsewhere.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Operational Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- MDMD documentation MUST remain the permanent knowledge base and retain
+  bidirectional links between layers and implementation files.
+- The SQLite catalog and support artifacts MUST live under
+  `.vscode/CopilotChatHistory/` unless the plan explicitly documents an override.
+- Migration checklists MUST ensure catalog, exports, census, and instructions can be
+  reconstructed without manual tweaks in a clean workspace.
+- Redaction policies MUST prevent sensitive payloads from resurfacing in recall or
+  exports; any new data sources MUST include redaction steps before ingestion.
+- Plans MUST cite `.github/copilot-instructions.md` when documenting environment
+  setup and MUST update that file if the supported shells or platforms change.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- Follow the spec-kit sequence: `/speckit.specify` -> `/speckit.plan` ->
+  `/speckit.tasks` -> `/speckit.analyze` -> `/speckit.implement`. Advancing to the
+  next command without closing findings from the prior phase is prohibited.
+- Every requirement in the spec MUST map to at least one plan milestone and one task;
+  tasks MUST state file paths and testing obligations derived from recall/export
+  success criteria.
+- Research, data models, contracts, and quickstart guides produced in `/speckit.plan`
+  MUST resolve all "NEEDS CLARIFICATION" markers before tasks are authored.
+- Tests and verification scripts MUST capture evidence for checklist items (e.g.,
+  recall latency, export parity, migration dry runs) and store artefacts where future
+  agents can replay them.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- This constitution supersedes conflicting instructions in feature branches; edits to
+  specs, plans, or tasks MUST document compliance with the principles above.
+- Amendments require updating this document, incrementing the semantic version, and
+  recording rationale in a commit message. Minor additions increment MINOR; wording
+  clarifications increment PATCH.
+- Constitutional compliance MUST be reviewed during `/speckit.analyze` and before
+  `/speckit.implement`. Unjustified violations are CRITICAL findings and block
+  advancement until resolved.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.2.0 | **Ratified**: 2025-11-01 | **Last Amended**: 2025-11-01

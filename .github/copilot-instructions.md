@@ -1,4 +1,4 @@
-# Copilot Instructions
+﻿# Copilot Instructions
 
 Last updated: 2025-10-22
 
@@ -26,6 +26,13 @@ Key capabilities we are pursuing:
 - Source code lives in `src/`
 - Copilot scratch + chat history: `AI-Agent-Workspace/` 
 - **Permanent documentation lives in `.mdmd/` using the Membrane Design MarkDown (MDMD) structure**
+
+## Windows & Shell Guardrails
+
+- Default shell is Windows PowerShell 5.1; craft commands that respect execution policies and prefer `;` for chaining instead of here-doc patterns.
+- When invoking Python, lean on helper scripts (checked into the repo) or single-line `python -c` commands that avoid complex quoting.
+- Capture terminal metadata (CWD, exit codes, stderr tails) whenever tooling records command output so exporters can surface warning/failure context.
+- Document alternate invocation examples for non-PowerShell shells inside README snippets when introducing new CLI entry points.
 
 ## Documentation Conventions
 

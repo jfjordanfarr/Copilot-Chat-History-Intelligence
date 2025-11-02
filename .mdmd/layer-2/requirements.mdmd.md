@@ -9,6 +9,7 @@ Functional requirements
 - Hydrate from VS Code Copilot storage (globalStorage and per-workspace storage) without manual exports.
 - Write a normalized SQLite DB with helper views (`prompt_activity`, `tool_call_details`, `catalog_metadata`).
 - Emit a `schema_manifest.json` and a README alongside the DB.
+- Linked Specification: [FR-001](../../specs/001-vision-spec/spec.md#fr-001)
 
 ### <a id="R002"></a> R002 — Markdown export (UI-parity + signal)
 - Render user/assistant text and a compact Actions section per turn.
@@ -16,12 +17,14 @@ Functional requirements
 - Suppress noise: `thinking` (optional cap), `mcpServersStarting`, `prepare/toolSerialized`, `textEditGroup` bulk, `codeblockUri` repetition.
 - Add per-turn “Actions this turn” and a session-level “Actions + Status summary”.
 - Surface cross-session counts inline (“Seen across N sessions (M× total)”) when we have prior motif data.
+- Linked Specification: [FR-002](../../specs/001-vision-spec/spec.md#fr-002)
 
 ### <a id="R003"></a> R003 — Failure & warning visibility
 - For terminal/tool failures, show exit code and capture a capped stderr-first tail with “(truncated)” marker.
 - When exit=0 but stderr exists, label as warnings and show a capped tail.
 - Detect interactive hangs and annotate “Awaiting input (interactive)”.
 - Highlight canceled/terminated turns inline and in session summaries.
+- Linked Specification: [FR-002](../../specs/001-vision-spec/spec.md#fr-002), [FR-004](../../specs/001-vision-spec/spec.md#fr-004)
 
 ### <a id="R004"></a> R004 — Repeat detection & LOD cues
 - Normalize action block text (lowercase, mask paths/URIs/UUIDs, collapse numbers/whitespace) so lightweight similarity scoring is viable.
@@ -29,22 +32,32 @@ Functional requirements
 - Across sessions: annotate “Seen across N sessions (M× total)” only when similarity crosses an actionable threshold; keep heuristics tunable so we can escalate from simple fingerprints to richer analysis if it sharpens tool-call guidance.
 - Provide hooks for deriving higher-level LOD summaries from repeat/similarity data and expose just-enough APIs for future MCP integrations.
 - Deliver a lowest-detail LOD (LOD-0) export that mirrors Copy All text but replaces the interior of every fenced/quoted code block with `...` to preserve structure while minimizing tokens.
+- Linked Specification: [FR-004](../../specs/001-vision-spec/spec.md#fr-004)
 
 ### <a id="R005"></a> R005 — Recall tooling
 - `conversation_recall.py`: TF‑IDF with on-disk caching; keyword query returns top K snippets with provenance.
 - `seen_before.py`: scan exports for repeated motifs (exact + near matches, e.g., Jaccard≥0.5).
 - `summarize_exports.py`: quick A/B metrics (counts for Actions, Terminal, Apply Patch, statuses, motif trends).
 - Lightweight LOD summaries: derive per-session headline stats for quick skims.
+- Linked Specification: [FR-003](../../specs/001-vision-spec/spec.md#fr-003)
 
 ### <a id="R006"></a> R006 — CLI ergonomics (Windows-first, portable)
 - Provide PowerShell-safe commands; avoid here-doc and multiline `python -c` with complex regex.
 - One-liners prefer helper `.py` scripts under `AI-Agent-Workspace/`.
 - Allow optional config file to centralize DB/export/cache paths for portability.
+- Linked Specification: [FR-007](../../specs/001-vision-spec/spec.md#fr-007)
 
 ### <a id="R007"></a> R007 — Migration readiness & traceability
 - Maintain a living development progress census and workplan that map requirement IDs to completion state (per 2025-10-22.md L2492).
 - Document the reverse-migration checklist and artifact triage so we can lift only Copilot-authored assets into new workspaces without losing history (2025-10-22.md L2492; 2025-10-23.md L69–1978).
 - Keep the user-intent census updated in ~1200-line increments and link requirement updates back to the census so spec-kit branches inherit an authoritative vision ledger (2025-11-01.md L1–648).
+- Linked Specification: [FR-005](../../specs/001-vision-spec/spec.md#fr-005), [FR-006](../../specs/001-vision-spec/spec.md#fr-006)
+
+### <a id="R008"></a> R008 — Workspace-scoped privacy & telemetry governance
+- Store catalog artifacts, exports, and telemetry strictly inside the active workspace; provide configuration to relocate paths only with explicit documentation.
+- Redact secrets and high-entropy tokens before persistence; optional adapters (e.g., Agent Lightning) must remain opt-in and log consent when enabled.
+- Ensure recall/export CLI paths never transmit chat history beyond the configured LLM provider (GitHub Copilot cloud by default, Ollama/local LLMs when configured).
+- Linked Specification: [FR-008](../../specs/001-vision-spec/spec.md#fr-008)
 
 Non‑functional requirements
 
