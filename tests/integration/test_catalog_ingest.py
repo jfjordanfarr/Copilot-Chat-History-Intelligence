@@ -35,21 +35,40 @@ def _rich_session_payload() -> dict:
     request["result"] = {
         "timings": {"firstProgress": 250, "totalElapsed": 900},
         "metadata": {
-            "command": "pytest -k flaky_test",
-            "exitCode": 1,
             "codeBlocks": [
                 {"language": "bash", "value": "pytest -k flaky_test"},
             ],
             "messages": [
                 {"role": "assistant", "content": "pytest -k flaky_test failed with exit code 1"}
             ],
+            "toolInvocations": [
+                {
+                    "name": "run_in_terminal",
+                    "args": {"command": "pytest -k flaky_test"},
+                    "result": {"exitCode": 1},
+                }
+            ],
         },
         "messages": [
             {"role": "assistant", "content": "Use pytest -k flaky_test"},
         ],
     }
+    request["response"] = [
+        {
+            "value": "Command finished with exit code 1",
+            "supportThemeIcons": False,
+            "supportHtml": False,
+        },
+        {
+            "kind": "toolInvocationSerialized",
+            "toolSpecificData": {
+                "commandLine": {"original": "pytest -k flaky_test"},
+                "toolResult": {"exitCode": 1, "stderr": "FAILED tests/test_example.py"},
+            },
+        },
+    ]
     request["toolOutputs"] = [
-        {"kind": "terminal", "payload": {"exit_code": 1, "command": "pytest"}}
+        {"kind": "terminal", "payload": {"exit_code": 1, "command": "pytest -k flaky_test"}}
     ]
     return payload
 
@@ -89,6 +108,10 @@ def test_catalog_ingest_populates_normalized_tables(tmp_path, monkeypatch):
         assert tool_rows
 
         conn.execute("SELECT * FROM catalog_metadata WHERE key='schema_version'").fetchone()
+        repeat_rows = conn.execute(
+            "SELECT command_text, exit_code, occurrence_count FROM metrics_repeat_failures"
+        ).fetchall()
+        assert repeat_rows == [("pytest -k flaky_test", 1, 1)]
     finally:
         conn.close()
 

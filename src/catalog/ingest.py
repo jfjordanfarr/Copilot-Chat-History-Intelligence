@@ -19,7 +19,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple
 
 
 CHATREPLAY_EXTENSION = ".chatreplay.json"
@@ -234,27 +234,31 @@ def extract_text(value: Any) -> Optional[str]:
     return safe_json_dumps(value)
 
 
-def parse_exit_code(payload: Any) -> Optional[int]:
+def parse_exit_code(payload: Any, *, _seen: Optional[Set[int]] = None) -> Optional[int]:
+    if _seen is None:
+        _seen = set()
+
+    obj_id = id(payload)
+    if obj_id in _seen:
+        return None
+    _seen.add(obj_id)
+
     if isinstance(payload, Mapping):
         for key in ("exitCode", "exit_code", "code"):
             if key in payload:
                 code = extract_int(payload.get(key))
                 if code is not None:
                     return code
-        for key in ("metadata", "result"):
-            nested = parse_exit_code(payload.get(key))
-            if nested is not None:
-                return nested
-        if isinstance(payload.get("messages"), list):
-            nested = parse_exit_code(payload["messages"])
-            if nested is not None:
-                return nested
-    if isinstance(payload, list):
-        for item in payload:
-            code = parse_exit_code(item)
+        for value in payload.values():
+            code = parse_exit_code(value, _seen=_seen)
             if code is not None:
                 return code
-    if isinstance(payload, str):
+    elif isinstance(payload, Sequence) and not isinstance(payload, (str, bytes, bytearray)):
+        for item in payload:
+            code = parse_exit_code(item, _seen=_seen)
+            if code is not None:
+                return code
+    elif isinstance(payload, str):
         match = re.search(r"exit code\s*(-?\d+)", payload, flags=re.IGNORECASE)
         if match:
             try:
@@ -271,13 +275,79 @@ def determine_command_text(request: Mapping[str, Any], metadata: Mapping[str, An
             metadata.get(key) for key in ("command", "lastCommand", "toolCommand")
         )
     candidates.extend(request.get(key) for key in ("command", "lastCommand"))
+
+    message_text: Optional[str] = None
     message = request.get("message") if isinstance(request.get("message"), Mapping) else {}
     if isinstance(message, Mapping):
-        candidates.append(message.get("text"))
+        message_text = message.get("text")
 
     for candidate in candidates:
         if isinstance(candidate, str) and candidate.strip():
             return candidate.strip()
+
+    for source in (metadata, request):
+        command = _walk_command_hints(source)
+        if command:
+            return command
+
+    if isinstance(message_text, str) and message_text.strip():
+        return message_text.strip()
+    return None
+
+
+def _normalise_command_candidate(value: Any) -> Optional[str]:
+    if isinstance(value, str):
+        candidate = value.strip()
+        if candidate:
+            return candidate
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        parts: List[str] = []
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                parts.append(item.strip())
+        if parts:
+            return " ".join(parts)
+    return None
+
+
+def _walk_command_hints(payload: Any, *, _seen: Optional[Set[int]] = None) -> Optional[str]:
+    if _seen is None:
+        _seen = set()
+
+    obj_id = id(payload)
+    if obj_id in _seen:
+        return None
+    _seen.add(obj_id)
+
+    if isinstance(payload, Mapping):
+        command_line = payload.get("commandLine")
+        candidate = _normalise_command_candidate(command_line)
+        if candidate:
+            return candidate
+        if isinstance(command_line, Mapping):
+            candidate = _normalise_command_candidate(command_line.get("original"))
+            if candidate:
+                return candidate
+
+        for key in ("command", "toolCommand", "lastCommand", "fullCommand"):
+            candidate = _normalise_command_candidate(payload.get(key))
+            if candidate:
+                return candidate
+
+        for key in ("argv", "args"):
+            candidate = _normalise_command_candidate(payload.get(key))
+            if candidate:
+                return candidate
+
+        for value in payload.values():
+            command = _walk_command_hints(value, _seen=_seen)
+            if command:
+                return command
+    elif isinstance(payload, Sequence) and not isinstance(payload, (str, bytes, bytearray)):
+        for item in payload:
+            command = _walk_command_hints(item, _seen=_seen)
+            if command:
+                return command
     return None
 
 
@@ -394,6 +464,8 @@ class RepeatFailureAggregator:
         command_hash = hashlib.sha1(canonical.encode("utf-8")).hexdigest()
         key = (command_hash, exit_code)
         redacted_payload = self.redactor.dumps(payload)
+        if redacted_payload and len(redacted_payload) > 20000:
+            redacted_payload = redacted_payload[:20000] + "..."
         snippet = self.redactor.redact_text(canonical) or ""
         snippet = snippet[:200]
         ts = timestamp_ms or 0

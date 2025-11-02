@@ -120,7 +120,21 @@ python -m pip install pytest pytest-cov
 
 ## 8. Migration smoke test (FR-006, SC-003)
 
-- Use (or author) `AI-Agent-Workspace/Workspace-Helper-Scripts/migrate_sandbox.py` to clone the repo into a temp directory, rerun ingestion/export, and compare `schema_manifest.json` + export hashes.
-- Preserve the script output (`_temp/migrate-log.txt`) as evidence that the migration checklist succeeds without manual edits.
+- Run `AI-Agent-Workspace/Workspace-Helper-Scripts/migrate_sandbox.py` to clone the repo into a throwaway sandbox, rerun ingestion/export, and snapshot recall metrics:
+
+   ```powershell
+   python AI-Agent-Workspace/Workspace-Helper-Scripts/migrate_sandbox.py `
+         --sessions "$env:APPDATA/Code/User/workspaceStorage/f8da2cbaae7003e40e01bcd4fe7fb2a6/chatSessions" `
+         --sandbox-dir AI-Agent-Workspace/_temp/migration_sandbox `
+         --summary AI-Agent-Workspace/_temp/migration_summary.json `
+         --repeat-failures-output AI-Agent-Workspace/_temp/repeat_failures.json
+   ```
+
+   - Omit `--sessions` to let the helper reuse the most recent ingest audit hint.
+   - Provide `--repeat-failures-baseline` when diffing against a prior run; by default the helper reuses the output file if it already exists.
+   - Add `--keep` to reuse an existing sandbox between runs (handy when diffing exports).
+
+- Inspect `_temp/migration_summary.json` for the regenerated database path, export listings, recall command, and the repeat-failure entry count; verify `_temp/repeat_failures.json` captured the metrics delta.
+- Prune the sandbox when finished (or rely on `migrate_sandbox.py` without `--keep` to reset it automatically) and archive the summary JSON for the migration checklist.
 
 Following these steps ensures the recall toolchain, exports, and governance artifacts stay in sync, satisfying the constitution’s environment-aware and intent-led requirements while unlocking `/speckit.tasks` for implementation planning.

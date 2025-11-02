@@ -66,11 +66,11 @@
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Normalize per-turn Actions with counts and noise suppression in `src/export/actions.py`
-- [ ] T013 [US2] Render Actions + Status summary, motif sections, and LOD-0 hooks in `src/export/markdown.py`
-- [ ] T014 [P] [US2] Format failure tails, warning annotations, and interactive states in `src/export/patterns.py`
-- [ ] T015 [P] [US2] Extend motif analysis pipeline in `AI-Agent-Workspace/Workspace-Helper-Scripts/seen_before.py`
-- [ ] T016 [US2] Add golden export integration test in `tests/integration/test_export_markdown.py`
+- [x] T012 [US2] Normalize per-turn Actions with counts and noise suppression in `src/export/actions.py`
+- [x] T013 [US2] Render Actions + Status summary, motif sections, and LOD-0 hooks in `src/export/markdown.py`
+- [x] T014 [P] [US2] Format failure tails, warning annotations, and interactive states in `src/export/patterns.py`
+- [x] T015 [P] [US2] Extend motif analysis pipeline in `AI-Agent-Workspace/Workspace-Helper-Scripts/seen_before.py`
+- [x] T016 [US2] Add golden export integration test in `tests/integration/test_export_markdown.py`
 
 **Checkpoint**: Exporter outputs UI-faithful transcripts with actionable status and motif cues ready for audits.
 
