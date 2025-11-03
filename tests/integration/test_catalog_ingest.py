@@ -128,3 +128,39 @@ def test_catalog_ingest_populates_normalized_tables(tmp_path, monkeypatch):
     assert audit["sessions_ingested"] == 1
     assert audit["redaction_enabled"] is True
     assert audit["warnings"] == []
+
+
+def test_catalog_ingest_skips_corrupt_files(tmp_path, monkeypatch):
+    fixture = create_catalog_fixture(tmp_path, sessions=[minimal_session_payload()])
+    monkeypatch.chdir(fixture.workspace_root)
+
+    corrupt_path = fixture.source_dir / "corrupt.json"
+    corrupt_path.write_text("{\"sessionId\": \"broken\"", encoding="utf-8")
+
+    malformed_path = fixture.source_dir / "malformed.json"
+    malformed_path.write_text("42", encoding="utf-8")
+
+    catalog_ingest.main(
+        [
+            str(fixture.source_dir),
+            "--db",
+            str(fixture.catalog_path),
+            "--output-dir",
+            str(fixture.catalog_path.parent),
+            "--workspace-root",
+            str(fixture.workspace_root),
+        ]
+    )
+
+    conn = sqlite3.connect(fixture.catalog_path)
+    try:
+        assert conn.execute("SELECT COUNT(*) FROM chat_sessions").fetchone()[0] == 1
+    finally:
+        conn.close()
+
+    audit_path = Path(fixture.workspace_root) / "AI-Agent-Workspace" / "_temp" / "ingest_audit.json"
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    assert audit["sessions_ingested"] == 1
+    assert len(audit["warnings"]) == 2
+    assert any("corrupt.json" in warning and "invalid JSON" in warning for warning in audit["warnings"])
+    assert any("malformed.json" in warning and "Unrecognized chat history format" in warning for warning in audit["warnings"])

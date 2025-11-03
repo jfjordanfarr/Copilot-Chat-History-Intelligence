@@ -1265,7 +1265,17 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         total_requests = 0
 
         for file_path in input_files:
-            sessions, source_kind = load_session_payloads(file_path)
+            try:
+                sessions, source_kind = load_session_payloads(file_path)
+            except json.JSONDecodeError as exc:
+                audit.add_warning(
+                    f"Skipped {file_path}: invalid JSON (line {exc.lineno} column {exc.colno})."
+                )
+                continue
+            except UserVisibleError as exc:
+                audit.add_warning(f"Skipped {file_path}: {exc}")
+                continue
+
             if not sessions:
                 audit.add_warning(f"No sessions extracted from {file_path}")
                 continue

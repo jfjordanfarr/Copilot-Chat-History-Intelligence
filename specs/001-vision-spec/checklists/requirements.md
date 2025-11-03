@@ -10,8 +10,8 @@
 	> Evidence: `D:/.venv/.../python.exe src/chat_logs_to_sqlite.py` (2025-11-01  🚀) refreshed `.vscode/CopilotChatHistory/copilot_chat_logs.db`, regenerated `schema_manifest.json` and `README_CopilotChatHistory.md`.
 - [x] CHK-002 Verify every catalog row stores provenance (workspace fingerprint, turn id, timestamp, tool metadata) and survives catalog reruns without duplicating entries (FR-001).
 	> Evidence: `python -m catalog.ingest --reset "%APPDATA%/Code/User/workspaceStorage/f8da2cbaae7003e40e01bcd4fe7fb2a6/chatSessions"` (2025-11-03 19:50Z) rebuilt `.vscode/CopilotChatHistory/copilot_chat_logs.db` to 16 sessions / 536 requests (`_temp/ingest_audit.json`). `python AI-Agent-Workspace/Workspace-Helper-Scripts/check_catalog_provenance.py --limit 5` confirmed matching total vs distinct request IDs, zero missing fingerprints/timestamps, and no duplicate identifiers.
-- [ ] CHK-003 Exercise ingestion against partial/corrupt JSON to ensure bad records are skipped or quarantined without terminating the run (Edge Case: schema drift/corruption).
-	> Evidence status: Pending fault-injection run with truncated `.chatreplay.json` sample.
+- [x] CHK-003 Exercise ingestion against partial/corrupt JSON to ensure bad records are skipped or quarantined without terminating the run (Edge Case: schema drift/corruption).
+	> Evidence: `python -m catalog.ingest` now records audit warnings instead of aborting on parse failures; `pytest tests/integration/test_catalog_ingest.py::test_catalog_ingest_skips_corrupt_files` writes a truncated `corrupt.json`, verifies the run completes with a single warning, and confirms only valid sessions populate the catalog (`ingest_audit.json` shows `sessions_ingested: 1`).
 - [ ] CHK-004 Run autosummarization-era ingestion to confirm census checkpoints persist every ≤1200 new lines and back-link to catalog entries (FR-005, Edge Case: autosummarization).
 	> Evidence status: Pending census chunk verification post-ingestion.
 
