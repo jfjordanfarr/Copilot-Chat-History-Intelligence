@@ -1,6 +1,6 @@
 ﻿# Copilot Instructions
 
-Last updated: 2025-11-02
+Last updated: 2025-11-03
 
 ## Behavior Expectations
 
@@ -38,6 +38,7 @@ Key capabilities we are pursuing:
 ## Automation Entry Points
 
 - **Catalog ingest**: `python -m catalog.ingest --reset` with optional session path argument. Always run inside an activated virtual environment to reuse dependencies.
+- **Catalog QA**: `python AI-Agent-Workspace/Workspace-Helper-Scripts/check_catalog_provenance.py --limit 5` verifies fingerprints/timestamps remain populated and highlights duplicate identifiers after ingest runs.
 - **Exports**: `python -m export.cli --database .vscode/CopilotChatHistory/copilot_chat_logs.db --all --include-status --workspace-directories --output AI-Agent-Workspace/_temp/exports`.
 - **Recall**: `python -m recall.conversation_recall "<query>" --print-latency` for quick provenance-rich answers; rely on `--workspace` filters when multiple repos share a catalog.
 - **Migration sandbox**:
@@ -70,11 +71,72 @@ Key capabilities we are pursuing:
 	- The helper scopes results to the active workspace fingerprint by default; add `--workspace <path-or-fingerprint>` (repeatable) or `--all-workspaces` when you need cross-repo telemetry.
 - **Census validation**: `python AI-Agent-Workspace/Workspace-Helper-Scripts/validate_census.py --summary AI-Agent-Workspace/_temp/census_validation.json` keeps 1200-line cadence in check.
 
+## Migration Recovery Playbook
+
+### Locate telemetry on any host
+
+| Host OS | Workspace-scoped path | Global fallback |
+|---------|-----------------------|-----------------|
+| Windows | `%APPDATA%\Code\User\workspaceStorage\<fingerprint>\chatSessions` | `%APPDATA%\Code\User\globalStorage\github.copilot-chat\chatSessions` |
+| macOS | `~/Library/Application Support/Code/User/workspaceStorage/<fingerprint>/chatSessions` | `~/Library/Application Support/Code/User/globalStorage/github.copilot-chat/chatSessions` |
+| Linux | `~/.config/Code/User/workspaceStorage/<fingerprint>/chatSessions` | `~/.config/Code/User/globalStorage/github.copilot-chat/chatSessions` |
+
+- Run `python -m catalog.ingest` without arguments first; the helper consults the most recent ingest audit and the table above. If it fails, rerun with `--path <absolute chatSessions directory>` copied from the matrix.
+- Use PowerShell to hunt for new telemetry roots when landing on a fresh profile:
+
+  ```powershell
+  Get-ChildItem "$env:APPDATA/Code/User/workspaceStorage" -Directory | Where-Object { Test-Path "$($_.FullName)/chatSessions" } | Select-Object -First 5 FullName
+  ```
+
+  POSIX equivalent:
+
+  ```bash
+  find "$HOME/Library/Application Support/Code/User/workspaceStorage" -maxdepth 2 -name chatSessions -print
+  ```
+
+### Bootstrap a cloned workspace on a new machine
+
+1. Clone this repository and restore `.venv` as described in the quickstart.
+2. Copy or mount the VS Code telemetry directory listed above; keep the original read-only for auditability.
+3. Run
+
+	```powershell
+	python -m catalog.ingest --reset
+	```
+
+	Add `--path <telemetry>` when the auto-discovery hint is missing.
+4. Rebuild exports as needed with `python -m export.cli --all --include-status --output AI-Agent-Workspace/Project-Chat-History/CopyAll-Paste` so the Markdown trail mirrors the refreshed catalog.
+5. Validate the census cadence:
+
+	```powershell
+	python AI-Agent-Workspace/Workspace-Helper-Scripts/validate_census.py `
+			 --summary AI-Agent-Workspace/_temp/census_validation.json
+	```
+
+	Capture the `generated_at` timestamp (run completes in under a minute on current transcripts) to prove ≤1200-line gaps.
+6. Capture a repeat-failure baseline for SC-004:
+
+	```powershell
+	python AI-Agent-Workspace/Workspace-Helper-Scripts/measure_repeat_failures.py `
+			 --output AI-Agent-Workspace/_temp/telemetry/$(Get-Date -Format yyyy-MM-dd)_repeat_failures.json `
+			 --security-report AI-Agent-Workspace/_temp/security/repeat_failures_hashes.json
+	```
+
+7. Commit the refreshed Copy-All artifacts and manifests so the migration history remains auditable.
+
+### Reverse migration / fallback
+
+1. When returning to the original machine, copy the newly generated Copy-All and summary outputs back into `AI-Agent-Workspace/Project-Chat-History/`.
+2. Re-run `python -m catalog.ingest --reset` (optionally pointing at the migrated telemetry directory) to fold the new sessions into the canonical catalog.
+3. Diff `_temp/migration_summary.json` and `_temp/repeat_failures.json` against the previous baseline; the helper’s `delta_overview` confirms any regressions.
+4. Finish by re-running the census validator to ensure tail gaps remain zero and store the updated `_temp/census_validation.json` with the latest hashes.
+
 ## Telemetry & Security Notes
 
 - Keep `AI-Agent-Workspace/_temp/security/` under version control for manifests only—never raw transcripts. Hashes written by `measure_repeat_failures.py --security-report` must include the catalog DB path, audit redaction counts, and delta summary for SC-004 evidence.
 - Migration summaries should reference the repeat-failure manifest plus `_temp/census_validation.json`; cite those artefacts when closing checklist items.
 - Record any opt-in adapters or external endpoints inside this file before enabling them so future agents inherit the consent audit trail.
+- Establish a telemetry cadence after rollout: store a dated baseline under `AI-Agent-Workspace/_temp/telemetry/`, then rerun `measure_repeat_failures.py --baseline <baseline>` seven days later. Confirm the new report’s `summary.total_occurrences` is ≤40% of the baseline value (≥60% reduction) and archive both the JSON and updated `repeat_failures_hashes.json` for SC-004.
 
 ## Documentation Conventions
 
@@ -93,3 +155,9 @@ Unlike the `.specs/` docs created by spec-kit-driven-development, the MDMD docs 
 ## Final Note: Context and Autosummarization
 
 Every ~64k-128k of tokens of chat history/context that goes through Github Copilot, an automatic summarization step occurs. Under the hood, this raises a new underlying conversation with a clean context window, save for the summary and the latest user prompt. This VS Code-initiated process makes a best attempt at enabling Github Copilot to continue its efforts uninterrupted across summarization windows but is far from perfect. If you exit an autosummarization process, try to rehydrate from the end of the active dev day's conversation history file to catch back up. 
+
+## Autosummarization Recovery Cadence
+
+- After any ingest or long-running session, run `python AI-Agent-Workspace/Workspace-Helper-Scripts/validate_census.py --summary AI-Agent-Workspace/_temp/census_validation.json` to guarantee every transcript chunk stays within the 1,200-line window. The current catalog validates in under a minute, keeping the replay budget well below the 15-minute SLA.
+- Store the validator output alongside the relevant Copy-All file so any agent can reopen the referenced snippet immediately when a lossy autosummarization step occurs.
+- During a fresh VS Code session, rehydrate by reading the latest `Project-Chat-History/CopyAll-Paste/<date>.md` range cited in the validator; this keeps replay time minimal and preserves the autosummarization checkpoints for SC-005 evidence.

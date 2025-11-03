@@ -33,24 +33,32 @@ python -m pip install pytest pytest-cov
 
 ## 2. Rebuild the chat catalog (FR-001, FR-005)
 
-1. Ensure no Python process is holding the existing SQLite file (`.vscode/CopilotChatHistory/copilot_chat_logs.db`).
-2. Run ingestion:
+1. Locate the VS Code telemetry directory. The most recent path lives in `AI-Agent-Workspace/_temp/ingest_audit.json`; alternatively run:<br>`Get-ChildItem "$env:APPDATA/Code/User/workspaceStorage" -Directory | Where-Object { Test-Path "$($_.FullName)/chatSessions" } | Select-Object -First 1 FullName`
+2. Run ingestion with a clean reset, pointing at that `chatSessions` directory:
 
    ```powershell
-   python -m catalog.ingest --db .vscode/CopilotChatHistory/copilot_chat_logs.db --output-dir .vscode/CopilotChatHistory
+   python -m catalog.ingest --reset "$env:APPDATA/Code/User/workspaceStorage/<fingerprint>/chatSessions"
    ```
 
    POSIX equivalent:
 
    ```bash
-   python -m catalog.ingest --db .vscode/CopilotChatHistory/copilot_chat_logs.db --output-dir .vscode/CopilotChatHistory
+   python -m catalog.ingest --reset "$HOME/Library/Application Support/Code/User/workspaceStorage/<fingerprint>/chatSessions"
    ```
 
+   Add `--db` / `--output-dir` overrides when the defaults (`.vscode/CopilotChatHistory`) differ from your workspace layout.
 3. Verify artifacts:
    - `.vscode/CopilotChatHistory/copilot_chat_logs.db` (SQLite catalog refreshed)
    - `.vscode/CopilotChatHistory/schema_manifest.json` (schema version, source files)
    - `.vscode/CopilotChatHistory/README_CopilotChatHistory.md` (table overviews, sample queries)
-4. Capture evidence by noting the ingestion timestamp from `catalog_metadata.generated_at_utc` or the manifest.
+4. Confirm provenance & deduping guarantees:
+
+   ```powershell
+   python AI-Agent-Workspace/Workspace-Helper-Scripts/check_catalog_provenance.py --limit 5
+   ```
+
+   The helper should report matching `total` and `distinct_request_id` counts (currently 536) with zero missing fingerprints/timestamps and empty duplicate lists.
+5. Capture evidence by noting the ingestion timestamp from `catalog_metadata.generated_at_utc` or the manifest.
 
 ## 3. Inspect recent sessions and exports (FR-002, FR-004)
 
@@ -96,6 +104,25 @@ python -m pip install pytest pytest-cov
 
    Add `--maxfail=1 --disable-warnings -q` for shorter runs when triaging.
 2. When the recall latency harness (`tests/regression/test_recall_latency.py`) lands, ensure it runs as part of CI and archive its timing output in `_temp/` or another ignored directory for audits.
+3. Capture a repeat-failure baseline immediately after rollout:
+
+   ```powershell
+   python AI-Agent-Workspace/Workspace-Helper-Scripts/measure_repeat_failures.py `
+          --output AI-Agent-Workspace/_temp/telemetry/$(Get-Date -Format yyyy-MM-dd)_repeat_failures.json `
+          --security-report AI-Agent-Workspace/_temp/security/repeat_failures_hashes.json
+   ```
+
+   Store the JSON and manifest under version control so SC-004 audits can reproduce the digest.
+4. Re-run the measurement seven days later with the baseline to confirm a ≥60% reduction:
+
+   ```powershell
+   python AI-Agent-Workspace/Workspace-Helper-Scripts/measure_repeat_failures.py `
+          --baseline AI-Agent-Workspace/_temp/telemetry/<baseline-date>_repeat_failures.json `
+          --output AI-Agent-Workspace/_temp/telemetry/$(Get-Date -Format yyyy-MM-dd)_repeat_failures.json `
+          --security-report AI-Agent-Workspace/_temp/security/repeat_failures_hashes.json
+   ```
+
+   Verify the new report’s `summary.total_occurrences` is ≤40% of the baseline value and archive both outputs for the checklist.
 
 ## 6. Update agent context (spec-kit gate)
 
@@ -117,9 +144,26 @@ python -m pip install pytest pytest-cov
 
 - Append new directives to `.mdmd/user-intent-census.md` every ≤1200 lines of chat history.
 - Link census entries back to requirements in `/.mdmd/layer-2/requirements.mdmd.md` and note the corresponding session IDs for traceability.
+- Regenerate the validator report after each ingest to prove tail gaps remain within the 1,200-line window:
+
+   ```powershell
+   python AI-Agent-Workspace/Workspace-Helper-Scripts/validate_census.py `
+             --summary AI-Agent-Workspace/_temp/census_validation.json
+   ```
+
+   The run completes in under a minute on the current catalog; commit the refreshed JSON so any agent can replay the latest checkpoints inside the 15-minute SLA.
 
 ## 8. Migration smoke test (FR-006, SC-003)
 
+- Identify the telemetry source before cloning:
+
+   | Host OS | Workspace-scoped path | Global fallback |
+   |---------|-----------------------|-----------------|
+   | Windows | `%APPDATA%\Code\User\workspaceStorage\<fingerprint>\chatSessions` | `%APPDATA%\Code\User\globalStorage\github.copilot-chat\chatSessions` |
+   | macOS | `~/Library/Application Support/Code/User/workspaceStorage/<fingerprint>/chatSessions` | `~/Library/Application Support/Code/User/globalStorage/github.copilot-chat/chatSessions` |
+   | Linux | `~/.config/Code/User/workspaceStorage/<fingerprint>/chatSessions` | `~/.config/Code/User/globalStorage/github.copilot-chat/chatSessions` |
+
+- On Windows, run `Get-ChildItem "$env:APPDATA/Code/User/workspaceStorage" -Directory | where { Test-Path "$($_.FullName)/chatSessions" }` to list recent fingerprints. The sandbox helper reuses the most recent entry from `_temp/ingest_audit.json` and falls back to these locations when `--sessions` is omitted.
 - Run `AI-Agent-Workspace/Workspace-Helper-Scripts/migrate_sandbox.py` to clone the repo into a throwaway sandbox, rerun ingestion/export, and snapshot recall metrics:
 
    ```powershell
@@ -136,5 +180,12 @@ python -m pip install pytest pytest-cov
 
 - Inspect `_temp/migration_summary.json` for the regenerated database path, export listings, recall command, and the repeat-failure entry count; verify `_temp/repeat_failures.json` captured the metrics delta.
 - Prune the sandbox when finished (or rely on `migrate_sandbox.py` without `--keep` to reset it automatically) and archive the summary JSON for the migration checklist.
+- When cloning to a fresh machine, follow the recovery playbook:
+   1. Restore the repo and `.venv`.
+   2. Copy the telemetry directory listed above or point `catalog.ingest --path` at a network share.
+   3. Run `python -m catalog.ingest --reset`, then rebuild exports with `python -m export.cli --all --include-status`.
+   4. Recreate `_temp/census_validation.json` and `repeat_failures_hashes.json` using the commands in steps 7 and 5.
+   5. Commit the refreshed Copy-All transcripts and manifests so the migration history stays auditable.
+- When returning to the original machine, pull the updated Copy-All and telemetry artefacts, rerun ingestion, and repeat the validator plus telemetry steps to verify the census cadence and repeat-failure deltas remain within spec.
 
 Following these steps ensures the recall toolchain, exports, and governance artifacts stay in sync, satisfying the constitution’s environment-aware and intent-led requirements while unlocking `/speckit.tasks` for implementation planning.

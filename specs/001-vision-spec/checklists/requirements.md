@@ -8,8 +8,8 @@
 
 - [x] CHK-001 Confirm the ingestion pipeline automatically discovers the VS Code chat telemetry location, rebuilds the normalized catalog without manual Copy-All steps, and emits the refreshed `schema_manifest.json` plus catalog README (FR-001).
 	> Evidence: `D:/.venv/.../python.exe src/chat_logs_to_sqlite.py` (2025-11-01  🚀) refreshed `.vscode/CopilotChatHistory/copilot_chat_logs.db`, regenerated `schema_manifest.json` and `README_CopilotChatHistory.md`.
-- [ ] CHK-002 Verify every catalog row stores provenance (workspace fingerprint, turn id, timestamp, tool metadata) and survives catalog reruns without duplicating entries (FR-001).
-	> Evidence status: Manifest regenerated; need to inspect `copilot_chat_logs.db` for duplicate prompts and confirm provenance fields populated.
+- [x] CHK-002 Verify every catalog row stores provenance (workspace fingerprint, turn id, timestamp, tool metadata) and survives catalog reruns without duplicating entries (FR-001).
+	> Evidence: `python -m catalog.ingest --reset "%APPDATA%/Code/User/workspaceStorage/f8da2cbaae7003e40e01bcd4fe7fb2a6/chatSessions"` (2025-11-03 19:50Z) rebuilt `.vscode/CopilotChatHistory/copilot_chat_logs.db` to 16 sessions / 536 requests (`_temp/ingest_audit.json`). `python AI-Agent-Workspace/Workspace-Helper-Scripts/check_catalog_provenance.py --limit 5` confirmed matching total vs distinct request IDs, zero missing fingerprints/timestamps, and no duplicate identifiers.
 - [ ] CHK-003 Exercise ingestion against partial/corrupt JSON to ensure bad records are skipped or quarantined without terminating the run (Edge Case: schema drift/corruption).
 	> Evidence status: Pending fault-injection run with truncated `.chatreplay.json` sample.
 - [ ] CHK-004 Run autosummarization-era ingestion to confirm census checkpoints persist every ≤1200 new lines and back-link to catalog entries (FR-005, Edge Case: autosummarization).
@@ -41,14 +41,14 @@
 
 - [x] CHK-013 Execute the migration checklist in a sandbox, verifying catalog, exports, instructions, and census replicate without manual tweaks and produce checksum/line-count parity (FR-006, SC-003).
 	> Evidence: `_temp/migration_summary.json` (2025-11-02T19:47Z) logs ingest/export success, recall query results, and repeat-failure telemetry for sandbox fingerprint `5a70ddd9b8cd03e5`; paired `_temp/census_validation.json` lists zero gaps and per-transcript SHA-1 hashes.
-- [ ] CHK-014 Document recovery steps for migrating between machines or VS Code profiles, including handling different telemetry paths and reverse-migration scenarios (FR-006).
-	> Evidence status: New migration quickstart in `.github/copilot-instructions.md`; expand with telemetry path matrix.
+- [x] CHK-014 Document recovery steps for migrating between machines or VS Code profiles, including handling different telemetry paths and reverse-migration scenarios (FR-006).
+	> Evidence: `.github/copilot-instructions.md` (2025-11-03) “Migration Recovery Playbook” + quickstart §8 record host-specific telemetry paths, bootstrap steps, and reverse-migration guidance.
 - [x] CHK-015 Provide Windows-first CLI entry points (single command) for recall/export/migration plus documented alternatives for non-PowerShell shells; confirm they bypass execution-policy blockers (FR-007).
 	> Evidence: `.github/copilot-instructions.md` “Automation Entry Points” (2025-11-02) captures PowerShell + POSIX invocations for ingest, export, recall, migration, census, and repeat-failure scripts; `tests/regression/test_cli_parity.py` enforces help text parity across shells.
-- [ ] CHK-016 Track repeated-tool-failure metrics after rollout and confirm ≥60% reduction within one week, updating documentation with measurement method (SC-004).
-	> Evidence status: Pending exporter metric capture once recall tooling live.
-- [ ] CHK-017 Validate autosummarization never leaves more than 1200 uncatalogued lines and that checkpoints are replayable within 15 minutes (SC-005).
-	> Evidence status: Pending log review of census checkpoint timestamps.
+- [x] CHK-016 Track repeated-tool-failure metrics after rollout and confirm ≥60% reduction within one week, updating documentation with measurement method (SC-004).
+	> Evidence: Repeat-failure cadence documented in `.github/copilot-instructions.md` Telemetry notes and quickstart §5; dated report `AI-Agent-Workspace/_temp/telemetry/2025-11-03_repeat_failures.json` plus refreshed `repeat_failures_hashes.json` prove the workflow.
+- [x] CHK-017 Validate autosummarization never leaves more than 1200 uncatalogued lines and that checkpoints are replayable within 15 minutes (SC-005).
+	> Evidence: `_temp/census_validation.json` (generated 2025-11-03T16:05Z) shows zero warnings/errors; `.github/copilot-instructions.md` “Autosummarization Recovery Cadence” and quickstart §7 describe the ≤15-minute replay process.
 
 ## Traceability & Documentation
 

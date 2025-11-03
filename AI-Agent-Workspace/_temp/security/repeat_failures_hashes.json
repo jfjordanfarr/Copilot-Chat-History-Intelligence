@@ -1,47 +1,47 @@
 {
-  "generated_at": "2025-11-02T21:08:12.675788+00:00",
+  "generated_at": "2025-11-03T19:50:44.087013+00:00",
   "catalog_db": "D:\\Projects\\Copilot-Chat-History-Intelligence\\.vscode\\CopilotChatHistory\\copilot_chat_logs.db",
-  "report_path": "AI-Agent-Workspace\\_temp\\repeat_failures.json",
+  "report_path": "AI-Agent-Workspace\\_temp\\telemetry\\2025-11-03_repeat_failures.json",
   "baseline_path": "AI-Agent-Workspace\\_temp\\repeat_failures.json",
-  "digest_sha256": "cc4ca00ca694c25b8be677c1db70fde55b008f2c781a38cd6287c57780e85ebe",
+  "digest_sha256": "387bbb9ec62633ca0c0e9163b7c90b8412cb174a30c3291d3f911ee885206afb",
   "summary": {
-    "total_occurrences": 123,
-    "unique_failures": 114,
+    "total_occurrences": 132,
+    "unique_failures": 123,
     "top_exit_codes": [
       {
         "exit_code": 1,
-        "occurrence_count": 49
+        "occurrence_count": 50
       },
       {
         "exit_code": 3,
-        "occurrence_count": 41
+        "occurrence_count": 47
       },
       {
-        "exit_code": 9,
+        "exit_code": 130,
         "occurrence_count": 11
       }
     ],
     "window": {
       "earliest": "2025-10-24T03:50:11.049000+00:00",
-      "latest": "2025-11-02T14:43:07.018000+00:00"
+      "latest": "2025-11-03T15:14:31.176000+00:00"
     },
     "workspace_fingerprints": [
       "5a70ddd9b8cd03e5"
     ]
   },
   "delta_overview": {
-    "new": 114,
+    "new": 9,
     "regressed": 0,
     "improved": 0,
-    "resolved": 114
+    "resolved": 0
   },
   "audit": {
-    "requests_ingested": 500,
-    "secrets_redacted": 761774
+    "requests_ingested": 536,
+    "secrets_redacted": 806993
   },
   "workspace_filters": [
     "5a70ddd9b8cd03e5"
   ],
-  "report_sha256": "7c071a85312e9f3ee7b2d0fb8953e5ef1d5edf3bd54c5a2e6e363c09962ed749",
+  "report_sha256": "c74a010209e0c0eeb0efb668cefe0ae54f50935e50f81b8df04ec131ca817176",
   "baseline_sha256": "7c071a85312e9f3ee7b2d0fb8953e5ef1d5edf3bd54c5a2e6e363c09962ed749"
 }
