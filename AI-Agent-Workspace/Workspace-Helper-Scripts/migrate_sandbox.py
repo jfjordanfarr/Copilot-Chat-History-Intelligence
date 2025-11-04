@@ -9,6 +9,7 @@ migration checklist.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -36,6 +37,11 @@ IGNORED_RELATIVE = {
 
 class MigrationError(RuntimeError):
     pass
+
+
+def compute_workspace_fingerprint(workspace_root: Path) -> str:
+    resolved = workspace_root.resolve()
+    return hashlib.sha1(str(resolved).encode("utf-8")).hexdigest()[:16]
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -194,6 +200,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     script_path = Path(__file__).resolve()
     workspace_root = (args.workspace_root or find_workspace_root(script_path.parent)).resolve()
     sandbox_root = (args.sandbox_dir or DEFAULT_SANDBOX).resolve()
+    sandbox_fingerprint = compute_workspace_fingerprint(sandbox_root)
     summary_path = (args.summary or DEFAULT_SUMMARY).resolve()
     repeat_failures_output = resolve_workspace_path(workspace_root, args.repeat_failures_output, DEFAULT_REPEAT_FAILURES)
     repeat_failures_baseline = resolve_optional_path(workspace_root, args.repeat_failures_baseline)
@@ -265,6 +272,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             str(db_path),
             "--limit",
             str(max(1, args.recall_limit)),
+            "--workspace",
+            sandbox_fingerprint,
             "--print-latency",
         ]
         result = run_command(recall_cmd, cwd=sandbox_root, env=env)
@@ -309,6 +318,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "workspace_root": str(workspace_root),
         "sandbox_root": str(sandbox_root),
+        "sandbox_workspace_fingerprint": sandbox_fingerprint,
         "catalog_db": str(db_path),
         "ingest": {
             "command": ingest_cmd,
@@ -323,6 +333,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "command": recall_cmd,
             "query": recall_query,
             "exit_code": recall_exit,
+            "workspace_filters": [sandbox_fingerprint] if recall_cmd else [],
         },
         "repeat_failures": {
             "command": repeat_failures_cmd,

@@ -63,6 +63,11 @@ def test_migration_sandbox_creates_catalog_and_exports(tmp_path):
     recall_info = summary.get("recall", {})
     assert recall_info.get("exit_code") == 0, "Recall CLI did not report success"
     assert recall_info.get("query"), "Recall query text was not captured"
+    recall_command = recall_info.get("command") or []
+    assert "--workspace" in recall_command, "Recall command missing workspace filter"
+    fingerprint = summary.get("sandbox_workspace_fingerprint")
+    assert fingerprint, "Sandbox workspace fingerprint not recorded"
+    assert recall_info.get("workspace_filters") == [fingerprint]
 
 
 def run_validate_census(tmp_path: Path, census_body: str, transcript_lines: int) -> subprocess.CompletedProcess:

@@ -21,6 +21,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple
 
+from catalog.rich_text import flatten_structured_text
+
 
 CHATREPLAY_EXTENSION = ".chatreplay.json"
 DEFAULT_DB_NAME = "copilot_chat_logs.db"
@@ -677,6 +679,39 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
 
     conn.execute(
         """
+        CREATE TABLE IF NOT EXISTS tool_output_text (
+            fragment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            request_id TEXT NOT NULL REFERENCES requests(request_id) ON DELETE CASCADE,
+            source_kind TEXT NOT NULL,
+            output_index INTEGER,
+            tool_call_id TEXT,
+            tool_name TEXT,
+            round_index INTEGER,
+            call_index INTEGER,
+            arguments_json TEXT,
+            text_hash TEXT NOT NULL,
+            text_length INTEGER NOT NULL,
+            plain_text TEXT NOT NULL
+        )
+        """
+    )
+
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_tool_output_text_request
+        ON tool_output_text(request_id)
+        """
+    )
+
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_tool_output_text_hash
+        ON tool_output_text(text_hash)
+        """
+    )
+
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS metrics_repeat_failures (
             workspace_fingerprint TEXT NOT NULL,
             command_hash TEXT NOT NULL,
@@ -991,6 +1026,8 @@ def persist_session(
                 if isinstance(item, Mapping):
                     tool_outputs.append({"kind": item.get("kind") or "toolOutput", "payload": item})
 
+        tool_output_text_rows: List[Tuple[Any, ...]] = []
+
         for output_index, output in enumerate(tool_outputs):
             conn.execute(
                 """
@@ -1003,6 +1040,89 @@ def persist_session(
                     output.get("kind"),
                     redactor.dumps(output.get("payload")) or safe_json_dumps(output.get("payload")),
                 ),
+            )
+
+            plain_text = flatten_structured_text(output.get("payload"))
+            redacted_text = redactor.redact_text(plain_text) if plain_text else None
+            if redacted_text and redacted_text.strip():
+                text_hash = hashlib.sha1(redacted_text.encode("utf-8")).hexdigest()
+                tool_output_text_rows.append(
+                    (
+                        request_id,
+                        "tool_output",
+                        output_index,
+                        None,
+                        output.get("kind"),
+                        None,
+                        None,
+                        None,
+                        text_hash,
+                        len(redacted_text),
+                        redacted_text,
+                    )
+                )
+
+        tool_call_lookup: Dict[str, Dict[str, Any]] = {}
+        tool_call_rounds = metadata.get("toolCallRounds") if isinstance(metadata.get("toolCallRounds"), list) else []
+        for round_index, round_entry in enumerate(tool_call_rounds):
+            calls = round_entry.get("toolCalls") if isinstance(round_entry, Mapping) else None
+            if not isinstance(calls, list):
+                continue
+            for call_index, call in enumerate(calls):
+                if not isinstance(call, Mapping):
+                    continue
+                call_id = call.get("id")
+                if not isinstance(call_id, str):
+                    continue
+                tool_call_lookup[call_id] = {
+                    "name": call.get("name"),
+                    "round_index": round_index,
+                    "call_index": call_index,
+                    "arguments": call.get("arguments"),
+                }
+
+        tool_call_results = metadata.get("toolCallResults") if isinstance(metadata.get("toolCallResults"), Mapping) else {}
+        for call_id, result_entry in tool_call_results.items():
+            plain_text = flatten_structured_text(result_entry)
+            redacted_text = redactor.redact_text(plain_text) if plain_text else None
+            if not redacted_text or not redacted_text.strip():
+                continue
+            lookup = tool_call_lookup.get(call_id, {})
+            text_hash = hashlib.sha1(redacted_text.encode("utf-8")).hexdigest()
+            tool_output_text_rows.append(
+                (
+                    request_id,
+                    "tool_call_result",
+                    None,
+                    call_id,
+                    lookup.get("name"),
+                    lookup.get("round_index"),
+                    lookup.get("call_index"),
+                    redactor.dumps(lookup.get("arguments")),
+                    text_hash,
+                    len(redacted_text),
+                    redacted_text,
+                )
+            )
+
+        for row in tool_output_text_rows:
+            conn.execute(
+                """
+                INSERT INTO tool_output_text(
+                    request_id,
+                    source_kind,
+                    output_index,
+                    tool_call_id,
+                    tool_name,
+                    round_index,
+                    call_index,
+                    arguments_json,
+                    text_hash,
+                    text_length,
+                    plain_text
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                row,
             )
 
         exit_code = parse_exit_code(metadata) or parse_exit_code(result) or None
@@ -1079,6 +1199,15 @@ SCHEMA_TABLES: Sequence[Mapping[str, Any]] = [
         "columns": [
             {"name": "tool_kind", "type": "TEXT", "meaning": "Descriptor for the tool output."},
             {"name": "payload_json", "type": "TEXT", "meaning": "Redacted JSON payload."},
+        ],
+    },
+    {
+        "name": "tool_output_text",
+        "description": "Flattened plain-text transcripts extracted from tool outputs and metadata.",
+        "columns": [
+            {"name": "source_kind", "type": "TEXT", "meaning": "Origin of the transcript (e.g., tool_output, tool_call_result)."},
+            {"name": "tool_name", "type": "TEXT", "meaning": "Name of the tool that produced the transcript when available."},
+            {"name": "text_length", "type": "INTEGER", "meaning": "Character length of the redacted transcript."},
         ],
     },
     {

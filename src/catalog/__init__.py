@@ -115,4 +115,79 @@ def fetch_tool_results(
             conn.close()
 
 
-__all__ = ["fetch_session_documents", "fetch_tool_results"]
+def fetch_tool_output_text(
+    database: ConnectionLike,
+    *,
+    request_ids: Optional[Iterable[str]] = None,
+    workspace_fingerprint: Optional[str] = None,
+    source_kinds: Optional[Iterable[str]] = None,
+    limit: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """Return flattened tool output fragments with request metadata."""
+
+    conn, owns_connection = _ensure_connection(database)
+    try:
+        clauses: List[str] = []
+        params: List[Any] = []
+
+        if request_ids:
+            request_list = list(request_ids)
+            placeholders = ",".join(["?"] * len(request_list))
+            clauses.append(f"r.request_id IN ({placeholders})")
+            params.extend(request_list)
+
+        if workspace_fingerprint:
+            clauses.append("r.workspace_fingerprint = ?")
+            params.append(workspace_fingerprint)
+
+        if source_kinds:
+            kinds_list = [kind for kind in source_kinds if isinstance(kind, str)]
+            if kinds_list:
+                placeholders = ",".join(["?"] * len(kinds_list))
+                clauses.append(f"t.source_kind IN ({placeholders})")
+                params.extend(kinds_list)
+
+        where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+
+        limit_clause = ""
+        if isinstance(limit, int) and limit > 0:
+            limit_clause = " LIMIT ?"
+            params.append(limit)
+
+        rows = conn.execute(
+            f"""
+            SELECT
+                t.fragment_id,
+                r.request_id,
+                r.session_id,
+                r.workspace_fingerprint,
+                r.timestamp_ms,
+                t.source_kind,
+                t.output_index,
+                t.tool_call_id,
+                t.tool_name,
+                t.round_index,
+                t.call_index,
+                t.arguments_json,
+                t.text_hash,
+                t.text_length,
+                t.plain_text
+            FROM tool_output_text t
+            JOIN requests r ON r.request_id = t.request_id
+            {where_clause}
+            ORDER BY r.timestamp_ms, t.fragment_id
+            {limit_clause}
+            """,
+            params,
+        ).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        if owns_connection:
+            conn.close()
+
+
+__all__ = [
+    "fetch_session_documents",
+    "fetch_tool_results",
+    "fetch_tool_output_text",
+]

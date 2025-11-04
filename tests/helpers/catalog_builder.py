@@ -155,6 +155,112 @@ def minimal_session_payload(
     }
 
 
+def rich_session_payload(
+    *,
+    session_id: str = "session-rich",
+    request_id: str = "request-rich",
+) -> Mapping[str, Any]:
+    """Return a payload exercising tool outputs and tool call metadata."""
+
+    payload = minimal_session_payload(
+        session_id=session_id,
+        request_id=request_id,
+        prompt="Run pytest with detailed logs",
+        response="Command finished with exit code 1",
+    )
+
+    request = payload["requests"][0]
+    created_ms = request["timestamp"]
+    request["agent"] = {
+        "id": "copilot-chat",
+        "name": "GitHub Copilot",
+        "isDefault": True,
+        "locations": ["panel"],
+    }
+    request["variableData"] = [
+        {
+            "id": "vscode.selection",
+            "name": "Selection",
+            "value": {"uri": "file:///tmp/example.py"},
+            "isFile": False,
+            "modelDescription": "Selected code",
+        }
+    ]
+
+    call_id = "call-rich-001"
+    request.setdefault("result", {})["metadata"] = {
+        "codeBlocks": [
+            {"language": "bash", "value": "pytest -k flaky_test"},
+        ],
+        "messages": [
+            {"role": "assistant", "content": "pytest -k flaky_test failed with exit code 1"}
+        ],
+        "toolInvocations": [
+            {
+                "name": "run_in_terminal",
+                "args": {"command": "pytest -k flaky_test"},
+                "result": {"exitCode": 1},
+            }
+        ],
+        "toolCallRounds": [
+            {
+                "toolCalls": [
+                    {
+                        "id": call_id,
+                        "name": "run_in_terminal",
+                        "arguments": {"command": "pytest -k flaky_test"},
+                    }
+                ]
+            }
+        ],
+        "toolCallResults": {
+            call_id: {
+                "text": "pytest -k flaky_test encountered failures",
+                "value": {
+                    "text": "stderr: FAILED tests/test_example.py::test_flaky",
+                    "plainText": "Process ended with exit code 1",
+                },
+                "metadata": {"completedAt": created_ms + 1000},
+            }
+        },
+    }
+
+    request["result"]["timings"] = {"firstProgress": 250, "totalElapsed": 900}
+    request["result"].setdefault("messages", []).append(
+        {"role": "assistant", "content": "Use pytest -k flaky_test"}
+    )
+
+    request.setdefault("response", []).append(
+        {
+            "kind": "toolInvocationSerialized",
+            "toolSpecificData": {
+                "commandLine": {"original": "pytest -k flaky_test"},
+                "toolResult": {
+                    "exitCode": 1,
+                    "stderr": "FAILED tests/test_example.py",
+                    "stdout": "================ test session starts ================",
+                },
+            },
+        }
+    )
+
+    request["toolOutputs"] = [
+        {
+            "kind": "terminal",
+            "payload": {
+                "exit_code": 1,
+                "command": "pytest -k flaky_test",
+                "output": [
+                    "================ test session starts ================",
+                    "FAILED tests/test_example.py::test_flaky",
+                ],
+            },
+        }
+    ]
+
+    return payload
+
+
 def load_session_json(path: Path) -> Mapping[str, Any]:
     """Convenience helper for tests that need to inspect written sessions."""
 
