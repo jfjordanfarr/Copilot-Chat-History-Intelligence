@@ -234,6 +234,34 @@ Purpose: Establish a durable index of user intent across the last two dev-day co
 
 - Lift only Copilot-authored product assets; treat helper scripts and regenerated outputs as workspace baggage.
 
+#### [2025-10-23] Lines 2739-2776 — Autosummarization hang replay and log attachments
+> "Apologies, I stopped the agentic runner because you came out of an autosummarization step. Here are the full results of the integration test which you deftly performed pauses on your own outputs to inspect." — jfjordanfarr (2025-10-23.md L2739-L2756)
+>
+> "Salient exthost log file:
+#file:1-Link-Aware Diagnostics.log:1-239
+
+Salient related run logs:
+#file:exthost.log:1-81
+#file:renderer.log:1-55" — jfjordanfarr (2025-10-23.md L2758-L2770)
+
+- Preserve the timeout transcript and cited log spans whenever autosummarization interrupts execution so rehydration orders restore full failure telemetry.
+- Treat these integration stalls as repeat-failure inputs feeding terminal analytics and SC-004 reporting pipelines.
+- Keep log file references paired with the Copy-All slice so future investigators can recover the exthost and renderer evidence without guesswork.
+
+#### [exthost] Lines 1-81 — Extension host stack trace evidence
+> "Salient related run logs:
+#file:exthost.log:1-81" — jfjordanfarr (2025-10-23.md L2765-L2767)
+
+- Archive the extension host log excerpt that captured the integration timeout so failure analytics retain the raw stack frames.
+- Include extension host telemetry in repeat-failure manifests whenever autosummarization citations point at these spans.
+
+#### [renderer] Lines 1-55 — Renderer diagnostics snapshot
+> "Salient related run logs:
+#file:renderer.log:1-55" — jfjordanfarr (2025-10-23.md L2768-L2770)
+
+- Preserve renderer diagnostics alongside exthost traces to keep UI-facing symptoms available during rehydration and playback.
+- Reference renderer log spans in census notes to guarantee autosummarization follow-ups replay both UI and extension host telemetry.
+
 ### 2025-10-31 — LOD ladder and fidelity limits
 #### [2025-10-31] Lines 1-863 — LOD-0 focus and documentation restraint
 > "Analyze this codebase to generate or update `.github/copilot-instructions.md` for guiding AI coding agents." — jfjordanfarr (2025-10-31.md L1-L20)
