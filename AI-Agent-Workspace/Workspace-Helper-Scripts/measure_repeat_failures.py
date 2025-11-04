@@ -53,7 +53,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 
-from analysis import terminal_failures
+from analysis import terminal_failures, workspace_filters
 
 
 @dataclass
@@ -411,31 +411,6 @@ def safe_text(text: str) -> str:
     return text.encode(encoding, errors="replace").decode(encoding, errors="replace")
 
 
-def compute_workspace_fingerprint(workspace_root: Path) -> str:
-    resolved = workspace_root.expanduser().resolve()
-    return hashlib.sha1(str(resolved).encode("utf-8")).hexdigest()[:16]
-
-
-def normalize_workspace_selector(value: str, *, base_dir: Path) -> str:
-    candidate = value.strip()
-    if not candidate:
-        raise ValueError("Workspace selector cannot be empty.")
-
-    path_like = Path(candidate)
-    # Treat strings containing path separators or pointing to existing directories as paths.
-    if path_like.exists() or any(sep in candidate for sep in ("/", "\\")):
-        target = path_like if path_like.is_absolute() else (base_dir / path_like)
-        return compute_workspace_fingerprint(target)
-
-    lowered = candidate.lower()
-    if len(lowered) == 16 and all(ch in "0123456789abcdef" for ch in lowered):
-        return lowered
-
-    raise ValueError(
-        f"Unrecognised workspace selector '{value}'. Provide a 16-character fingerprint or a workspace path."
-    )
-
-
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="Summarise repeat-failure metrics from the Copilot catalog.")
     parser.add_argument("--db", type=Path, default=CATALOG_PATH, help="Path to the normalized catalog database.")
@@ -468,32 +443,26 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not db_path.exists():
         parser.error(f"Catalog not found at {db_path}")
 
-    workspace_filters: Optional[List[str]]
-    base_workspace = args.workspace_root.expanduser().resolve() if args.workspace_root else Path.cwd().resolve()
-    if args.all_workspaces:
-        workspace_filters = None
-    else:
-        if args.workspace:
-            filters: List[str] = []
-            for selector in args.workspace:
-                try:
-                    filters.append(normalize_workspace_selector(selector, base_dir=base_workspace))
-                except ValueError as exc:
-                    parser.error(str(exc))
-            workspace_filters = sorted(set(filters)) or None
-        else:
-            workspace_filters = [compute_workspace_fingerprint(base_workspace)]
+    try:
+        workspace_filters_resolved = workspace_filters.resolve_workspace_filters(
+            selectors=args.workspace,
+            all_workspaces=args.all_workspaces,
+            workspace_root=args.workspace_root,
+            cwd=Path.cwd(),
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
 
-    rows = fetch_failures(db_path, workspace_filters=workspace_filters)
+    rows = fetch_failures(db_path, workspace_filters=workspace_filters_resolved)
     audit = load_audit(AUDIT_PATH)
     baseline = load_baseline(args.baseline)
     deltas = compute_delta(rows, baseline)
     summary = summarise_rows(rows)
     delta_summary = summarise_delta_entries(deltas)
-    terminal_metrics = collect_terminal_metrics(db_path, workspace_filters=workspace_filters)
+    terminal_metrics = collect_terminal_metrics(db_path, workspace_filters=workspace_filters_resolved)
 
     unique_fingerprints = {row.workspace_fingerprint for row in rows if row.workspace_fingerprint}
-    show_workspace = len(unique_fingerprints) > 1 or (workspace_filters is None and rows)
+    show_workspace = len(unique_fingerprints) > 1 or (workspace_filters_resolved is None and rows)
     print(safe_text(render_table(rows, limit=max(args.top, 0), show_workspace=show_workspace)))
     if audit:
         redactions = audit.get("secrets_redacted")
@@ -602,7 +571,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             summary=summary,
             delta_summary=delta_summary,
             baseline_path=args.baseline,
-            workspace_filters=workspace_filters,
+            workspace_filters=workspace_filters_resolved,
             terminal_metrics=terminal_metrics,
         )
         print()
@@ -618,7 +587,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             audit=audit,
             report_path=args.output,
             baseline_path=args.baseline,
-            workspace_filters=workspace_filters,
+            workspace_filters=workspace_filters_resolved,
             terminal_metrics=terminal_metrics,
         )
         print()

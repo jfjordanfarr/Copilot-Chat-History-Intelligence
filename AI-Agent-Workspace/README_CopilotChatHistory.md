@@ -45,6 +45,7 @@ Outputs:
 - Use `python AI-Agent-Workspace/Workspace-Helper-Scripts/measure_repeat_failures.py --output AI-Agent-Workspace/_temp/repeat_failures.json` to snapshot the aggregates.
 - The helper now embeds terminal telemetry sourced from `analysis.terminal_failures`: console output prints an overall success/failure summary plus the top failure-prone commands, and JSON/security artifacts include a `terminal_failure_analysis` section with the same breakdown for long-term evidence.
 - `--baseline` continues to compute deltas, while the terminal analytics portion always reflects the current catalog scope (workspace filters respected).
+- For focused triage, run `python AI-Agent-Workspace/Workspace-Helper-Scripts/analyze_terminal_failures.py --limit 10 --sample-limit 1` to print the highest-risk commands and optionally capture structured JSON (per-command stats plus transcript samples).
 
 ## Migration Sandbox
 - To validate a relocation, clone the workspace into a throwaway directory and rerun the toolchain:

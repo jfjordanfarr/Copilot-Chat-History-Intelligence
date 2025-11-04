@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -50,7 +51,20 @@ CLI_CASES = [
         [sys.executable, str(helper_scripts_dir() / "measure_repeat_failures.py"), "--help"],
         ["--baseline", "--security-report", "--workspace", "--all-workspaces"],
     ),
+    (
+        "analyze_terminal_failures_script",
+        [sys.executable, str(helper_scripts_dir() / "analyze_terminal_failures.py"), "--help"],
+        ["--sample-limit", "--all-workspaces", "--workspace"],
+    ),
 ]
+
+
+def _with_pythonpath(src_path: Path) -> dict:
+    env = os.environ.copy()
+    current = env.get("PYTHONPATH")
+    src_str = str(src_path)
+    env["PYTHONPATH"] = src_str if not current else src_str + os.pathsep + current
+    return env
 
 
 @pytest.mark.parametrize("label, command, expected_flags", CLI_CASES)
@@ -61,6 +75,7 @@ def test_cli_help_runs(label: str, command: List[str], expected_flags: List[str]
         capture_output=True,
         text=True,
         check=False,
+        env=_with_pythonpath(repo_root() / "src"),
     )
     assert result.returncode == 0, f"{label} help command failed: {result.stderr}"
     stdout_lower = result.stdout.lower()
