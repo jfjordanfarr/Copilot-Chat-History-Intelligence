@@ -9,6 +9,12 @@ report that can be archived alongside SC-004 evidence. It supports three modes:
 * emitting a security manifest containing hashes and redaction counts so audits
     can prove no sensitive payloads leaked outside the workspace boundary.
 
+When `analysis.terminal_failures` is available, the script also enriches the
+console output and JSON artifacts with per-command terminal analytics. The
+report embeds an overall success/failure breakdown plus the highest-impact
+commands (via a new `terminal_failure_analysis` section) so repeat-failure
+reviews can correlate catalog aggregates with real terminal transcripts.
+
 Usage examples (PowerShell):
 
 ```powershell
@@ -31,14 +37,23 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import sqlite3
-from collections import Counter
-from dataclasses import dataclass, asdict
-import hashlib
 import sys
+from collections import Counter
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable, List, Mapping, Optional, Sequence, Tuple
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+
+from analysis import terminal_failures
 
 
 @dataclass
@@ -282,6 +297,38 @@ def summarise_audit(audit: Optional[Mapping[str, object]]) -> Optional[Mapping[s
     return {"requests_ingested": requests, "secrets_redacted": redactions}
 
 
+def _command_stats_to_dict(stats: terminal_failures.CommandStats) -> Mapping[str, object]:
+    return {
+        "command": stats.command,
+        "total": stats.total,
+        "successes": stats.successes,
+        "failures": stats.failures,
+        "unknown": stats.unknown,
+        "failure_rate": stats.failure_rate,
+    }
+
+
+def collect_terminal_metrics(
+    db_path: Path,
+    *,
+    workspace_filters: Optional[Sequence[str]],
+    top_limit: int = 10,
+) -> Optional[Mapping[str, object]]:
+    try:
+        calls = terminal_failures.load_terminal_calls(db_path, workspace_fingerprints=workspace_filters)
+    except sqlite3.OperationalError:
+        return None
+    except sqlite3.DatabaseError:
+        return None
+
+    summary = terminal_failures.summarise_overall(calls)
+    command_stats = terminal_failures.aggregate_command_stats(calls)
+    return {
+        "summary": summary,
+        "top_commands": [_command_stats_to_dict(item) for item in command_stats[:top_limit]],
+    }
+
+
 def save_report(
     path: Path,
     *,
@@ -294,6 +341,7 @@ def save_report(
     delta_summary: Mapping[str, int],
     baseline_path: Optional[Path],
     workspace_filters: Optional[Sequence[str]],
+    terminal_metrics: Optional[Mapping[str, object]],
 ) -> None:
     payload = {
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -301,6 +349,7 @@ def save_report(
         "summary": summary,
         "audit": summarise_audit(audit),
         "workspace_filters": list(workspace_filters) if workspace_filters else None,
+        "terminal_failure_analysis": terminal_metrics,
         "baseline": {
             "path": str(baseline_path) if baseline_path else None,
             "generated_at": baseline.generated_at if baseline else None,
@@ -324,12 +373,14 @@ def write_security_manifest(
     report_path: Optional[Path],
     baseline_path: Optional[Path],
     workspace_filters: Optional[Sequence[str]],
+    terminal_metrics: Optional[Mapping[str, object]],
 ) -> None:
     base_payload = {
         "entries": [asdict(row) for row in rows],
         "summary": summary,
         "delta_overview": delta_summary,
         "audit": summarise_audit(audit),
+        "terminal_failure_analysis": terminal_metrics,
     }
     digest = hashlib.sha256(json.dumps(base_payload, sort_keys=True).encode("utf-8")).hexdigest()
 
@@ -343,6 +394,7 @@ def write_security_manifest(
         "delta_overview": delta_summary,
         "audit": summarise_audit(audit),
         "workspace_filters": list(workspace_filters) if workspace_filters else None,
+        "terminal_failure_analysis": terminal_metrics,
     }
 
     if report_path and report_path.exists():
@@ -438,6 +490,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     deltas = compute_delta(rows, baseline)
     summary = summarise_rows(rows)
     delta_summary = summarise_delta_entries(deltas)
+    terminal_metrics = collect_terminal_metrics(db_path, workspace_filters=workspace_filters)
 
     unique_fingerprints = {row.workspace_fingerprint for row in rows if row.workspace_fingerprint}
     show_workspace = len(unique_fingerprints) > 1 or (workspace_filters is None and rows)
@@ -471,6 +524,52 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         if formatted:
             print(safe_text(f"Top exit codes: {formatted}"))
+
+    if terminal_metrics is not None:
+        term_summary = terminal_metrics.get("summary") if isinstance(terminal_metrics, Mapping) else None
+        top_commands = terminal_metrics.get("top_commands") if isinstance(terminal_metrics, Mapping) else None
+        if isinstance(term_summary, Mapping):
+            total_calls = term_summary.get("total_calls", 0)
+            print()
+            if total_calls:
+                successes = term_summary.get("successes", 0)
+                failures = term_summary.get("failures", 0)
+                unknown = term_summary.get("unknown", 0)
+                failure_rate = term_summary.get("failure_rate")
+                if isinstance(failure_rate, (int, float)):
+                    failure_display = f"{failure_rate * 100:.1f}%"
+                else:
+                    failure_display = "n/a"
+                print(
+                    safe_text(
+                        "Terminal analytics: "
+                        f"total={total_calls} successes={successes} failures={failures} "
+                        f"unknown={unknown} failure_rate={failure_display}"
+                    )
+                )
+                if isinstance(top_commands, list) and top_commands:
+                    print(safe_text("Top terminal commands by failure rate:"))
+                    for item in top_commands[:5]:
+                        if not isinstance(item, Mapping):
+                            continue
+                        command = item.get("command", "")
+                        failure_rate_item = item.get("failure_rate")
+                        if isinstance(failure_rate_item, (int, float)):
+                            rate_display = f"{failure_rate_item * 100:.1f}%"
+                        else:
+                            rate_display = "n/a"
+                        total = item.get("total", 0)
+                        failures_item = item.get("failures", 0)
+                        successes_item = item.get("successes", 0)
+                        unknown_item = item.get("unknown", 0)
+                        print(
+                            safe_text(
+                                f"  {command} | total={total} failures={failures_item} "
+                                f"successes={successes_item} unknown={unknown_item} failure_rate={rate_display}"
+                            )
+                        )
+            else:
+                print(safe_text("Terminal analytics: no run_in_terminal telemetry within the selected scope."))
     if deltas:
         print()
         print(safe_text("Changes vs baseline:"))
@@ -504,6 +603,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             delta_summary=delta_summary,
             baseline_path=args.baseline,
             workspace_filters=workspace_filters,
+            terminal_metrics=terminal_metrics,
         )
         print()
         print(safe_text(f"Wrote report to {args.output}"))
@@ -519,6 +619,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             report_path=args.output,
             baseline_path=args.baseline,
             workspace_filters=workspace_filters,
+            terminal_metrics=terminal_metrics,
         )
         print()
         print(safe_text(f"Wrote security manifest to {args.security_report}"))
