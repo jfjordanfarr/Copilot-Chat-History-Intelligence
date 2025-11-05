@@ -13,6 +13,7 @@ Vision
 - Losslessly ingest Copilot chat histories from VS Code global storage and normalize them into a queryable SQLite catalog with explicit provenance and schema history.
 - Render compact “Actions” blocks for tools (Terminal, Apply Patch, Search, Read, etc.) with outcomes, statuses, failure tails, and cross-session counts so transcripts stay readable yet decision-ready.
 - Detect reused or suspiciously similar action sequences, annotate them inline when they signal a likely repeat (“Seen before (Nx)” / “Seen across N sessions”), and keep the detection lightweight enough to justify the insight (similarity heuristics first, richer motif analysis only if it sharpens tool-call guidance).
+- Quantify shifts in tooling patterns—e.g., when inline commands give way to helper scripts—by mining the catalog for command transitions and surface instruction-ready insights that steer Copilot toward the proven path.
 - Produce layered outputs: session exports, motif indexes, and future ultra-compact LOD summaries that an agent can skim before drilling into full transcripts.
 - Expose a small set of CLIs (and later MCP hooks) to power “have I done this before?” queries that are fast enough to use during a chat.
 

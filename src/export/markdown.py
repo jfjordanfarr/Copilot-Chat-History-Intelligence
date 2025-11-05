@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import re
 
+from analysis import similarity_threshold as similarity_threshold_module
+
 from .actions import RenderedActions, render_actions
 from .response_parser import inject_actions_into_request
 from .utils import format_uri, prune_keys
@@ -22,6 +24,7 @@ MetadataMessage = Dict[str, Any]
 Request = Dict[str, Any]
 
 SENSITIVE_METADATA_KEYS = {"encrypted"}
+CATALOG_DB_PATH = Path(".vscode") / "CopilotChatHistory" / "copilot_chat_logs.db"
 
 
 def ms_to_iso(timestamp_ms: Optional[int]) -> Optional[str]:
@@ -374,6 +377,8 @@ def _annotate_seen(
     lines: List[str],
     seen: Dict[str, int],
     cross_stats: Optional[Dict[str, Tuple[int, int]]] = None,
+    *,
+    similarity_threshold_value: float,
 ) -> List[str]:
     if not lines:
         return lines
@@ -387,16 +392,23 @@ def _annotate_seen(
         prev = seen.get(fp, 0)
         seen[fp] = prev + 1
         if prev > 0:
-            # Append a seen marker to the first line of the block
-            out[start] = out[start] + f"  — Seen before ({prev}×)"
-        # Cross-session stats
+            total_occurrences = prev + 1
+            similarity_score = similarity_threshold_module.similarity_score_from_occurrence(total_occurrences)
+            if similarity_score >= similarity_threshold_value:
+                out[start] = (
+                    out[start]
+                    + f"  — Seen before ({prev}× prior, similarity={similarity_score:.2f} ≥ {similarity_threshold_value:.2f})"
+                )
         if cross_stats is not None:
             sess_total = cross_stats.get(fp)
             if sess_total:
                 sess_count, total_count = sess_total
-                # Avoid duplicating if already present
-                if "Seen across" not in out[start]:
-                    out[start] = out[start] + f"  — Seen across {sess_count} sessions ({total_count}× total)"
+                similarity_score = similarity_threshold_module.similarity_score_from_occurrence(total_count)
+                if similarity_score >= similarity_threshold_value and "Seen across" not in out[start]:
+                    out[start] = (
+                        out[start]
+                        + f"  — Seen across {sess_count} sessions ({total_count}× total, similarity={similarity_score:.2f} ≥ {similarity_threshold_value:.2f})"
+                    )
     return out
 
 
@@ -471,6 +483,7 @@ def render_turn(
     _seen_state: Optional[Dict[str, int]] = None,
     _cross_stats: Optional[Dict[str, Tuple[int, int]]] = None,
     _status_label: Optional[str] = None,
+    _similarity_threshold: Optional[float] = None,
 ) -> List[str]:
     # Inject actions from response text if they're embedded as JSON
     request = inject_actions_into_request(request)
@@ -513,7 +526,17 @@ def render_turn(
             )
             action_lines = rendered_actions.lines
             if action_lines and _seen_state is not None and not include_raw_actions:
-                action_lines = _annotate_seen(action_lines, _seen_state, _cross_stats)
+                threshold_value = (
+                    _similarity_threshold
+                    if _similarity_threshold is not None
+                    else similarity_threshold_module.FALLBACK_THRESHOLD
+                )
+                action_lines = _annotate_seen(
+                    action_lines,
+                    _seen_state,
+                    _cross_stats,
+                    similarity_threshold_value=threshold_value,
+                )
             if action_lines:
                 counts = rendered_actions.counts
                 if counts:
@@ -595,6 +618,7 @@ def render_session_markdown(
     include_raw_actions: bool = False,
     cross_session_dir: Optional[Path] = None,
     lod_level: Optional[int] = None,
+    similarity_threshold: Optional[float] = None,
 ) -> str:
     if lod_level == 0:
         lod0 = _render_lod0_transcript(session)
@@ -635,6 +659,16 @@ def render_session_markdown(
             cross_stats = _build_cross_session_counts(cross_session_dir)
         except Exception:
             cross_stats = None
+
+    if similarity_threshold is None:
+        try:
+            session_similarity_threshold = similarity_threshold_module.compute_similarity_threshold(
+                CATALOG_DB_PATH
+            ).threshold
+        except Exception:
+            session_similarity_threshold = similarity_threshold_module.FALLBACK_THRESHOLD
+    else:
+        session_similarity_threshold = max(0.0, min(1.0, similarity_threshold))
 
     # Track status counts across the session
     status_counts: Dict[str, int] = {"Canceled": 0, "Terminated": 0, "Error": 0, "No response": 0, "OK": 0}
@@ -677,6 +711,7 @@ def render_session_markdown(
                 _seen_state=seen_state,
                 _cross_stats=cross_stats,
                 _status_label=status_label,
+                _similarity_threshold=session_similarity_threshold,
             )
         )
     # Inject a Motifs (repeats) section near the top if there are repeated motifs
@@ -694,7 +729,11 @@ def render_session_markdown(
         count, exemplar = motif_counts.get(fp, (0, first_line))
         motif_counts[fp] = (count + 1, exemplar)
 
-    repeats = [(c, l) for fp, (c, l) in motif_counts.items() if c > 1]
+    repeats = [
+        (c, l)
+        for fp, (c, l) in motif_counts.items()
+        if c > 1 and similarity_threshold_module.similarity_score_from_occurrence(c) >= session_similarity_threshold
+    ]
     repeats.sort(reverse=True)
 
     # Build an overall action-type summary across the session

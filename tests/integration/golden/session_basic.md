@@ -85,11 +85,11 @@ Warnings (stderr) tail:
 Duration: 980 ms
 CWD: d:\repo\project
 
-**Terminal** — pytest → ✓  — Seen across 1 sessions (1× total)
+**Terminal** — pytest → ✓  — Seen across 1 sessions (1× total, similarity=0.63 ≥ 0.63)
 Duration: 900 ms
 CWD: d:\repo\project
 
-**Terminal** — pytest → ✓  — Seen before (1×)  — Seen across 1 sessions (1× total)
+**Terminal** — pytest → ✓  — Seen before (1× prior, similarity=0.86 ≥ 0.63)  — Seen across 1 sessions (1× total, similarity=0.63 ≥ 0.63)
 Duration: 905 ms
 CWD: d:\repo\project
 
@@ -126,7 +126,3 @@ Stop running commands.
   - 1× — Raw progressTaskSerialized → Terminal → Terminal
   - 1× — Terminal → Raw progressTaskSerialized → Terminal
   - 1× — Terminal → Terminal → Terminal
-
-## Motifs (repeats)
-
-- 3× — **Terminal** — pytest → ✓

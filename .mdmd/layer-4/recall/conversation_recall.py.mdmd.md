@@ -48,6 +48,7 @@
 - Latency harness: [tests/regression/test_recall_latency.py](../../../tests/regression/test_recall_latency.py).
 - Migration parity: [tests/regression/test_migration_sandbox.py](../../../tests/regression/test_migration_sandbox.py) (recall invoked during sandbox dry runs).
 - CLI parity: [tests/regression/test_cli_parity.py](../../../tests/regression/test_cli_parity.py) validates Windows/POSIX help entry consistency.
+- Latency telemetry: [AI-Agent-Workspace/_temp/recall_latency.json](../../../AI-Agent-Workspace/_temp/recall_latency.json) (2025-11-04T21:02Z) captures cold vs warmed cache latencies (~1.20 ms → ~1.05 ms), workspace-filtered results, and zero-return wrong-workspace guardrails for CHK-005/CHK-007 evidence.
 
 ## Observability
 - Cache directory defaults to `AI-Agent-Workspace/.cache/conversation_recall`; configurable via `--cache-dir` and `--workspace-root` for sandbox runs.

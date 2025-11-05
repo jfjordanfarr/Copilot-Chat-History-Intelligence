@@ -83,6 +83,14 @@ Each item lists requirement mappings and acceptance criteria.
   - Produce a lowest-detail transcript that preserves message order but replaces the contents of every fenced/quoted code block with `...`.
   - Accept: Running the export with `--lod 0` yields output where each code/terminal block retains its fences and language hints yet contains only `...` markers.
 
+- W115 — Command lineage & transition detector (R009)
+  - Stitch terminal calls, pylance snippets, and helper scripts by `request_id`/timestamp; emit lineage records plus daily transition counts under `_temp/transition_metrics/`.
+  - Accept: A helper script prints top “A → B” replacements for a chosen date range, demonstrating the drop in inline `python -c` vs helper usage captured this week.
+
+- W116 — Statistical deltas & instruction synthesis (R009)
+  - Run chi-square/Fisher and trend tests across daily transition metrics to flag significant shifts; generate templated instruction snippets referencing evidence.
+  - Accept: A report file lists statistically significant replacements with suggested `.instructions.md` guidance, and at least one guidance snippet is reviewed for inclusion in `.github/copilot-instructions.md`.
+
 Suggested milestone grouping (post-2025-10-31)
 - M4 (Complete): W101, W103, W104, W105, W112
 - M5 (Next): W107, W108, W109, W110, W111

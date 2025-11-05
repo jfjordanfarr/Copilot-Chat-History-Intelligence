@@ -59,6 +59,13 @@ Functional requirements
 - Ensure recall/export CLI paths never transmit chat history beyond the configured LLM provider (GitHub Copilot cloud by default, Ollama/local LLMs when configured).
 - Linked Specification: [FR-008](../../specs/001-vision-spec/spec.md#fr-008)
 
+### <a id="R009"></a> R009 — Command transition analytics & instruction synthesis
+- Build a lineage graph for each chat turn that orders Terminal, pylanceRunCodeSnippet, and helper-script executions so we can detect when command *A* hands off to command *B*.
+- Aggregate transition counts per day/week and apply lightweight statistical tests (e.g., chi-square / Fisher exact for proportion shifts, Mann–Kendall trend for failure-rate trajectories) to quantify changes.
+- Surface the strongest transitions and statistical deltas as instruction-ready insights (“Prefer helper script B over inline A”) suitable for `.github/copilot-instructions.md` and workspace `.instructions.md` updates.
+- Persist transition/metric summaries under `AI-Agent-Workspace/_temp/` so recall tooling and future MCP endpoints can reuse the evidence.
+- Linked specification: *(TBD — addendum to vision spec to be drafted alongside implementation)*
+
 Non‑functional requirements
 
 ### <a id="NFR001"></a> NFR001 — Performance

@@ -24,12 +24,12 @@ CLI_CASES = [
     (
         "export_cli_module",
         [sys.executable, "-m", "export.cli", "--help"],
-        ["--database", "--include-status"],
+        ["--database", "--include-status", "--similarity-threshold"],
     ),
     (
         "recall_conversation_module",
         [sys.executable, "-m", "recall.conversation_recall", "--help"],
-        ["--print-latency", "--workspace"],
+        ["--print-latency", "--workspace", "--min-score"],
     ),
     (
         "migrate_sandbox_script_win",

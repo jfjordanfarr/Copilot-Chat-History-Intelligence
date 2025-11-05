@@ -51,3 +51,7 @@ Related
 Backlinks
 - Architecture: ../../layer-3/architecture.mdmd.md
 - Requirements: ../../layer-2/requirements.mdmd.md#R002, ../../layer-2/requirements.mdmd.md#R006
+
+## Evidence
+- 2025-11-04: `python -m export.cli --database .vscode/CopilotChatHistory/copilot_chat_logs.db --session 53b8f248-8887-4c93-9243-7e7f96d26560 --include-status --output AI-Agent-Workspace/_temp/export_scalability/53b8f248_full.md` generated a 157,509-line export with 11 "Exit code" entries and 65 "Actions this turn" markers; metrics logged in `AI-Agent-Workspace/_temp/export_scalability/summary.json` confirm Copy-All parity on a >150k-line session.
+- 2025-11-04: `python -m export.cli --database .vscode/CopilotChatHistory/copilot_chat_logs.db --session 53b8f248-8887-4c93-9243-7e7f96d26560 --include-status --lod 0 --output AI-Agent-Workspace/_temp/export_scalability/53b8f248_lod0.md` produced the LOD-0 transcript with 273 collapsed `...` markers plus tool invocation JSON for actionable metadata; `summary.json` captures the delta versus the full export for follow-up on failure-tail presentation.

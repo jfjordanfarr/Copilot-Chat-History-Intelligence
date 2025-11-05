@@ -12,8 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
+from analysis import similarity_threshold as similarity_threshold_module
 from chat_logs_to_sqlite import gather_input_files, is_vscode_chat_session
 from .markdown import ms_to_iso, render_session_markdown
+CATALOG_DB_PATH = Path(".vscode") / "CopilotChatHistory" / "copilot_chat_logs.db"
 
 
 class UserVisibleError(RuntimeError):
@@ -66,6 +68,11 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         type=int,
         choices=[0],
         help="Render a specific level-of-detail transcript (0 = Copy-All style with fenced blocks collapsed to ...).",
+    )
+    parser.add_argument(
+        "--similarity-threshold",
+        type=float,
+        help="Override the actionable similarity threshold (0-1). Defaults to the 90th percentile derived from metrics_repeat_failures telemetry.",
     )
     parser.add_argument(
         "--database",
@@ -315,6 +322,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     args = parse_args(argv)
     target_path = Path(args.path).expanduser() if args.path else None
 
+    db_path: Optional[Path] = None
     if args.database:
         db_path = Path(args.database).expanduser()
         if not db_path.exists():
@@ -371,6 +379,17 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     exporting_multiple = len(selected_sessions) > 1 or args.all
 
+    if args.similarity_threshold is not None:
+        similarity_threshold_value = max(0.0, min(1.0, args.similarity_threshold))
+    else:
+        threshold_source = db_path if db_path is not None else CATALOG_DB_PATH
+        try:
+            similarity_threshold_value = similarity_threshold_module.compute_similarity_threshold(
+                threshold_source
+            ).threshold
+        except Exception:
+            similarity_threshold_value = similarity_threshold_module.FALLBACK_THRESHOLD
+
     for record in selected_sessions:
         session = record.session
         if record.source is not None and not session.get("sessionId") and record.source:
@@ -407,6 +426,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             include_raw_actions=args.raw_actions,
             cross_session_dir=cross_dir,
             lod_level=args.lod,
+            similarity_threshold=similarity_threshold_value,
         )
         export_session(markdown, destination)
 

@@ -22,6 +22,12 @@ Key components
 - TF‑IDF vector cache under `AI-Agent-Workspace/.cache/conversation_recall/` (configurable, rebuildable).
 - Motif recall over exports (exact and near matches) and A/B export metrics.
 
+4) Command transition analytics — planned modules under `src/analysis/` (leveraging `terminal_failures`)
+- Enrich `TerminalCall` data with per-turn lineage that stitches terminal calls, pylance snippets, and helper scripts by `request_id`/timestamp.
+- Detect “A → B” replacement patterns where a failing/unknown command is immediately followed by a successful alternative; persist daily aggregates under `_temp/transition_metrics/`.
+- Run lightweight statistical tests (proportion deltas, trend tests) to highlight significant shifts and output instruction-ready summaries for `.github/copilot-instructions.md` refreshes.
+- Feed insights to repeat-failure telemetry and future MCP adapters so agents can query “What replaced this failing command?” mid-conversation.
+
 - Storage → Ingestor → SQLite (requests/logs/views/manifest)
 - SQLite + motif cache → Exporter → Markdown + motif summaries + LOD briefs
 - Markdown + SQLite → Recall CLIs (and future MCP) → “Have I done this before?” answers
@@ -31,6 +37,7 @@ Key components
 - Seen-before annotations: maintain a session-scoped map; append `— Seen before (Nx)` to repeats.
 - Cross-session annotations: reuse motif index to append `— Seen across N sessions (M× total)`.
 - Sequence motifs: compute bigrams/trigrams across action titles; surface under “Sequence motifs”.
+- Transition analytics: align lineage fragments to compute replacement counts, failure deltas, and statistical significance scores feeding instruction templates.
 - LOD hooks: summarise motif/action stats for future condensed outputs.
 
 - Cache expensive recall vectors; cap terminal/warning tails; avoid huge raw payloads unless `--raw-actions`.

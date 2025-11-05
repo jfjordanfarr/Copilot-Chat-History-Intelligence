@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+from analysis import similarity_threshold as similarity_threshold_module
 from catalog import fetch_tool_results
 
 CATALOG_DB_PATH = Path(".vscode") / "CopilotChatHistory" / "copilot_chat_logs.db"
@@ -492,14 +493,24 @@ def query_catalog(
     return results, elapsed
 
 
-def format_result(score: float, document: Document) -> str:
+def format_result(score: float, document: Document, *, threshold: Optional[float] = None) -> str:
     timestamp_text = document.timestamp_iso() or "unknown"
-    header = (
-        f"score={score:.3f} request={document.request_id} "
-        f"session={document.session_id or 'unknown'} "
-        f"timestamp={timestamp_text} "
-        f"fingerprint={document.workspace_fingerprint}"
-    )
+    if threshold is not None:
+        relation = "≥" if score >= threshold else "<"
+        header = (
+            f"score={score:.3f} ({relation} threshold {threshold:.3f}) "
+            f"request={document.request_id} "
+            f"session={document.session_id or 'unknown'} "
+            f"timestamp={timestamp_text} "
+            f"fingerprint={document.workspace_fingerprint}"
+        )
+    else:
+        header = (
+            f"score={score:.3f} request={document.request_id} "
+            f"session={document.session_id or 'unknown'} "
+            f"timestamp={timestamp_text} "
+            f"fingerprint={document.workspace_fingerprint}"
+        )
     lines = [header]
     if document.command_text:
         lines.append(f"  command={document.command_text}")
@@ -547,6 +558,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--no-cache", action="store_true", help="Disable cache usage for this run.")
     parser.add_argument("--print-latency", action="store_true", help="Display query latency once complete.")
+    parser.add_argument(
+        "--min-score",
+        type=float,
+        help="Minimum similarity score required for a result to be emitted (0-1). Defaults to the actionable threshold derived from metrics_repeat_failures telemetry.",
+    )
     return parser
 
 
@@ -557,6 +573,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if not db_path.exists():
         parser.error(f"Catalog not found at {db_path}")
+
+    if args.min_score is not None:
+        min_score = max(0.0, min(1.0, args.min_score))
+    else:
+        try:
+            min_score = similarity_threshold_module.compute_similarity_threshold(db_path).threshold
+        except Exception:
+            min_score = similarity_threshold_module.FALLBACK_THRESHOLD
 
     results, elapsed = query_catalog(
         args.query,
@@ -570,12 +594,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         use_cache=not args.no_cache,
     )
 
+    actionable = [(score, document) for score, document in results if score >= min_score]
+    suppressed = len(results) - len(actionable)
+    results = actionable
+
     if not results:
-        print("No similar situations found.")
+        if suppressed > 0:
+            print(
+                f"No similar situations found above threshold {min_score:.3f}. "
+                f"{suppressed} candidate(s) were below the actionability threshold."
+            )
+        else:
+            print("No similar situations found.")
         return 1
 
+    print(
+        f"Actionable results: {len(results)}/{len(results) + suppressed} (min_score={min_score:.3f})"
+    )
+    print()
+
     for score, document in results:
-        print(format_result(score, document))
+        print(format_result(score, document, threshold=min_score))
         print()
 
     if args.print_latency:

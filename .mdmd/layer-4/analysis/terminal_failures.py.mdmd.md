@@ -26,6 +26,7 @@ Inputs
 Outputs
 - Python dataclasses and counters summarizing terminal activity.
 - Raw transcripts with normalized exit codes suitable for JSON reports or console tables.
+- (Planned) Transition lineages that relate terminal calls to subsequent helper or pylance executions for command replacement analytics.
 
 Behavior
 - Repairs malformed JSON escape sequences inside `result_metadata_json` blobs before parsing tool call payloads.
@@ -37,6 +38,10 @@ Edge cases
 - Ignores requests whose metadata cannot be parsed into `toolCallRounds` or `toolCallResults`.
 - Handles missing transcripts by falling back to formatted result payloads.
 - Returns `unknown` classification when neither exit codes nor keywords indicate outcome, keeping failure-rate math honest.
+
+Next steps
+- Extend loaders to emit per-request lineage groupings so downstream analytics can observe “command A → command B” replacements.
+- Provide aggregation helpers (e.g., `compute_transition_matrix`, `summarise_command_trends`) that return counts ready for chi-square/trend tests feeding instruction synthesis.
 
 Related
 - Helper CLI: [AI-Agent-Workspace/Workspace-Helper-Scripts/analyze_terminal_failures.py](../../../AI-Agent-Workspace/Workspace-Helper-Scripts/analyze_terminal_failures.py)
